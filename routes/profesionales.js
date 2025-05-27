@@ -15,4 +15,127 @@ router.get('/', (req, res) =>{
     });
 });
 
+router.get('/:id', (req, res) =>{
+    const profesionalId = req.params.id;
+    const query = 'SELECT * FROM Profesional WHERE ID_Profesional = ?';
+    
+    db.query(query, [profesionalId], (err, results) =>{
+        if (err){
+            console.error(`Error fetching profesional whith ID ${profesionalId}:`, err);
+            res.status(500).json({error: `Error al obtener el profesional con ID ${profesionalId}`});
+            return;
+        }
+
+        if(results.length === 0){
+            res.status(404).json({error: `No se encontro ningun profesional con ID ${profesionalId}`});
+            return;
+        }
+
+        res.json(results[0]);
+    });
+});
+
+router.post('/:profesionalId/servicios', (req, res) =>{
+    const profesionalId = req.params.profesionalId;
+    const {nombre, duracion, precio} = req.body;
+
+    if(!nombre || !duracion || !precio){
+        return res.status(400).json({error: 'Por favor, proporiona nombre, duracion y precio para el servicio.'});
+    }
+
+    const query = 'INSERT INTO Servicio (Nombre, Duración, Precio, ID_Profesional) VALUES (?, ?, ?, ?)';
+    db.query(query, [nombre, duracion, precio, profesionalId], (err, results) =>{
+        if(err){
+            console.error(`Error creating service for profesional ID ${profesionalId}:`, err);
+            res.status(500).json({error: 'Error al crear el servicio.'});
+        }
+
+        const newServiceId = results.insertId;
+        res.status(201).json({id: newServiceId, message: 'Servicio creado exitosamente.'});
+    });
+});
+
+router.get('/:profesionalId/servicios', (req, res) =>{
+    const profesionalId = req.params.profesionalId;
+    const query = 'SELECT * FROM Servicio WHERE ID_Profesional = ?';
+
+    db.query(query, [profesionalId], (err, results) =>{
+        if (err){
+            console.error(`Error fetching servicios for profesional ID ${profesionalId}:`, err);
+            res.status(500).json({error: 'Error al obtener los servicios.'});
+            return;
+        }
+
+        res.json(results);
+    });
+});
+
+router.get('/:profesionalId/servicios/:servicioId', (req, res) =>{
+    const profesionalId = req.params.profesionalId;
+    const servicioId = req.params.servicioId;
+    const query = 'SELECT * FROM Servicio WHERE ID_Servicio = ? AND ID_Profesional = ?';
+
+    db.query(query, [servicioId, profesionalId], (err, results) =>{
+        if(err){
+            console.error(`Error fetching servicio ${servicioId} for profesional ${profesionalId}:`, err);
+            res.status(500).json({error: 'Error al obtener el servicio'});
+            return;
+        }
+
+        if(results.length === 0){
+            res.status(400).json({error: `No se encontro el servicio ${servicioId} para el profesional ${profesionalId}`});
+            return;
+        }
+
+        res.json(results[0]);
+    });
+});
+
+router.put('/:profesionalId/servicios/:servicioId', (req, res) =>{
+    const profesionalId = req.params.profesionalId;
+    const servicioId = req.params.servicioId;
+    const {nombre, duracion, precio} = req.body;
+
+    if(!nombre || !duracion || !precio){
+       return res.status(400).json({ error: 'Por favor, proporciona nombre, duración y precio para actualizar el servicio.' });
+    }
+
+    const query = 'UPDATE Servicio SET Nombre = ?, Duración = ?, Precio = ? WHERE ID_Servicio = ? AND ID_Profesional = ?';
+    db.query(query, [nombre, duracion, precio, servicioId, profesionalId], (err, result) =>{
+        if(err){
+            console.error(`Error updating servicio ${servicioId} for profesional ${profesionalId}:`, err);
+            res.status(500).json({error: 'Error al actualizar el servicio'});
+            return;
+        }
+
+        if (result.affectedRows === 0){
+            res.status(400).json({error: `No se encontro el servicio ${servicioId} para el profesional ${profesionalId}`});
+            return;
+        }
+
+        res.json({message: 'Servicio actualizado exitosamente.'});
+    });
+});
+
+router.delete('/:profesionalId/servicios/:servicioId', (req, res) =>{
+    const profesionalId = req.params.profesionalId;
+    const servicioId = req.params.servicioId;
+    const query = 'DELETE FROM Servicio WHERE ID_Servicio = ? AND ID_Profesional = ?';
+    
+    db.query(query, [servicioId, profesionalId], (err, results) =>{
+        if(err){
+            console.error(`Error deleting servicio ${servicioId} for profesional ${profesionalId}:`, err);
+            res.status(500).json({error: 'Error al eliminar el servicio.'});
+            return;
+        }
+         
+        if(results.affectedRows === 0){
+            res.status(400).json({ error: `No se encontro el servicio ${servicioId} para el profesional ${profesionalId}`});
+            return;
+        }
+
+        res.json({message: 'Servicio eliminado exitosamente.'});
+    });
+});
+
 module.exports = router;

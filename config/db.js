@@ -27,4 +27,4 @@ db.getConnection((err, connection) => {
     console.log('Database connected successfully!');
 });
 
-module.exports = db.promise();
+module.exports = db;

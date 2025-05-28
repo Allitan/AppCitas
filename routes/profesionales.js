@@ -138,4 +138,31 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) =>{
     });
 });
 
+// Ruta para crear un nuevo horario de disponibilidad para un profesional
+router.post('/:profesionalId/disponibilidad', (req, res) =>{
+     const profesionalId = req.params.profesionalId;
+    const { dia, horaInicio, horaFin } = req.body;
+
+  if (!dia || !horaInicio || !horaFin) {
+    return res.status(400).json({ error: 'Por favor, proporciona dia, hora de inicio y hora de fin para la disponibilidad' });
+  }
+
+  const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (!timeRegex.test(horaInicio) || !timeRegex.test(horaFin)) {
+    return res.status(400).json({ error: 'El formato de hora debe ser HH:MM (ej. 09:00, 18:30).' });
+  }
+
+  const query = 'INSERT INTO Disponibilidad (Dia, HoraInicio, HoraFin, ID_Profesional) VALUES (?, ?, ?, ?)';
+  db.query(query, [dia, horaInicio, horaFin, profesionalId], (err, results) => {
+    if (err) {
+      console.error(`Error creating disponibilidad for profesional ID ${profesionalId}:`, err);
+      res.status(500).json({ error: 'Error al crear la disponibilidad.' });
+      return;
+    }
+
+    const newDisponibilidadId = results.insertId;
+    res.status(201).json({ id:newDisponibilidadId, message: 'Disponibilidad creada exitosamente.' });
+    });
+});
+
 module.exports = router;

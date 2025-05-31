@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
+// Mostrar todos los profesionales
 router.get('/', (req, res) =>{
     const query = 'SELECT * FROM Profesional';
 
@@ -15,6 +16,7 @@ router.get('/', (req, res) =>{
     });
 });
 
+//Mostrar el profesional dependiendo del id de cada profesional
 router.get('/:id', (req, res) =>{
     const profesionalId = req.params.id;
     const query = 'SELECT * FROM Profesional WHERE ID_Profesional = ?';
@@ -35,6 +37,7 @@ router.get('/:id', (req, res) =>{
     });
 });
 
+// Agregar un servicio
 router.post('/:profesionalId/servicios', (req, res) =>{
     const profesionalId = req.params.profesionalId;
     const {nombre, duracion, precio} = req.body;
@@ -55,6 +58,7 @@ router.post('/:profesionalId/servicios', (req, res) =>{
     });
 });
 
+// Mostrar el servicio dependiendo del profesional que lo da
 router.get('/:profesionalId/servicios', (req, res) =>{
     const profesionalId = req.params.profesionalId;
     const query = 'SELECT * FROM Servicio WHERE ID_Profesional = ?';
@@ -91,6 +95,7 @@ router.get('/:profesionalId/servicios/:servicioId', (req, res) =>{
     });
 });
 
+// Actualizar un servicio
 router.put('/:profesionalId/servicios/:servicioId', (req, res) =>{
     const profesionalId = req.params.profesionalId;
     const servicioId = req.params.servicioId;
@@ -117,6 +122,7 @@ router.put('/:profesionalId/servicios/:servicioId', (req, res) =>{
     });
 });
 
+//Eliminar un servicio 
 router.delete('/:profesionalId/servicios/:servicioId', (req, res) =>{
     const profesionalId = req.params.profesionalId;
     const servicioId = req.params.servicioId;

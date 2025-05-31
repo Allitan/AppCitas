@@ -171,6 +171,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) =>{
         });
     });
 
+    //obtener la disponibilidad de un profesional.
     router.get('/:profesionalId/disponibilidad', (req,res) =>{
         const profesionalId = req.params.profesionalId;
         const query = 'SELECT ID_Disponibilidad, Dia, HoraInicio, HoraFin FROM Disponibilidad WHERE ID_Profesional = ?';
@@ -188,5 +189,68 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) =>{
             res.json({results});
         });
     });
+
+// Ruta para obtener toda la disponibilidad de un profesional específico
+    router.get('/:profesionalId/disponibilidad', (req, res) => {
+        const profesionalId = req.params.profesionalId;
+        const query = 'SELECT ID_Disponibilidad, Dia, HoraInicio, HoraFin FROM Disponibilidad WHERE ID_Profesional = ?';
+
+        db.query(query, [profesionalId], (err, results) => {
+            if (err) {
+                console.error(`Error fetching disponibilidad for profesional ID ${profesionalId}:`, err);
+                return res.status(500).json({ error: 'Error al obtener la disponibilidad.' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ message: `No se encontró disponibilidad para el profesional con ID ${profesionalId}.` });
+            }
+
+            res.json(results);
+        });
+    });
+
+    //Ruta para crear una nueva cita para un profesional
+    router.post('/:profesionalId/citas', (req, res) =>{
+        const profesionalId = req.params.profesionalId;
+        const { idCliente, idServicio, fecha, hora} = req.body;
+
+        if(!idCliente || !idServicio || !fecha || !hora){
+            return res.status(400).json({error: 'Por favor, proporciona idCliente, idServicio, fecha y hora para la cita'});
+        }
+
+        const query = 'INSERT INTO Cita (ID_Profesional, ID_Cliente, ID_Servicio, Fecha, Hora, Estado) VALUES (?, ?, ?, ?, ?, ?)';
+        db.query(query, [profesionalId, idCliente, idServicio, fecha, hora, 'Pendiente'], (err, results) =>{
+            if(err){
+                console.error('Error creating cita:', err);
+                return res.status(500).json({error: 'Error al crear la cita.'});
+            }
+
+            const newCitaId = results.insertId;
+            res.status(201).json({id: newCitaId, message: 'Cita creada exitosamenge.'});
+        });
+    });
+
+    // Ruta para obtener todas las citas de un profesional
+    router.get('/:profesionalId/citas', (req, res) => {
+        const profesionalId = req.params.profesionalId;
+        const query = 'SELECT ID_Cita, ID_Cliente, ID_Servicio, Fecha, Hora, Estado FROM Cita WHERE ID_Profesional = ?';
+
+        db.query(query, [profesionalId], (err, results) => {
+            if (err) {
+                console.error(`Error fetching citas for profesional ID ${profesionalId}:`, err);
+                return res.status(500).json({ error: 'Error al obtener las citas.' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ message: `No se encontraron citas para el profesional con ID ${profesionalId}.` });
+            }
+
+            res.json(results);
+        });
+    });
+
+
+
+
 
 module.exports = router;

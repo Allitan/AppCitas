@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const PORT = 3000;
 const profesionalesRoutes = require('./routes/profesionales');
+const citasRouter = require('./routes/citas');
 
 app.use((req, res, next) =>{
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,6 +14,7 @@ app.use((req, res, next) =>{
 app.use(express.json());
 
 app.use('/api/profesionales', profesionalesRoutes);
+app.use('/api/citas', citasRouter);
 
 app.get('/', (req, res) =>{
     res.send('Hola desde la API de gestion de citas!');

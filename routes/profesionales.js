@@ -121,7 +121,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
 });
 
     // Ruta para crear un nuevo horario de disponibilidad para un profesional
-    router.post('/:profesionalId/disponibilidad', (req, res) =>{
+    router.post('/:profesionalId/disponibilidad', authenticateProfesional,(req, res) =>{
         const profesionalId = req.params.profesionalId;
         const { dia, horaInicio, horaFin } = req.body;
 
@@ -272,7 +272,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
     });
 
     // Ruta para obtener todas las citas de un profesional
-    router.get('/:profesionalId/citas', (req, res) => {
+    router.get('/:profesionalId/citas', authenticateProfesional,(req, res) => {
         const profesionalId = req.params.profesionalId;
         const query = 'SELECT ID_Cita, ID_Cliente, ID_Servicio, Fecha, Hora, Estado FROM Cita WHERE ID_Profesional = ?';
 
@@ -312,7 +312,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
 
 
     // Ruta para actualizar un horario de disponibilidad específico de un profesional
-    router.put('/:profesionalId/disponibilidad/:disponibilidadId', (req, res) => {
+    router.put('/:profesionalId/disponibilidad/:disponibilidadId', authenticateProfesional, (req, res) => {
         const profesionalId = req.params.profesionalId;
         const disponibilidadId = req.params.disponibilidadId;
         const { dia, horaInicio, horaFin } = req.body;
@@ -363,7 +363,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
     });
 
     // Ruta para eliminar un horario de disponibilidad específico de un profesional
-    router.delete('/:profesionalId/disponibilidad/:disponibilidadId', (req, res) => {
+    router.delete('/:profesionalId/disponibilidad/:disponibilidadId', authenticateProfesional,(req, res) => {
         const profesionalId = req.params.profesionalId;
         const disponibilidadId = req.params.disponibilidadId;
         const query = 'DELETE FROM Disponibilidad WHERE ID_Disponibilidad = ? AND ID_Profesional = ?';

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
-const { authenticateProfesional } = require('../middleware/authProfesionalMiddleware');
+const { authenticateProfesional } = require('../middleware/authoProfesionalMiddleware');
 
 // Mostrar todos los profesionales
 router.get('/', (req, res) =>{

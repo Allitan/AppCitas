@@ -457,8 +457,4 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
         }
     });
 
-
-
-
-
 module.exports = router;

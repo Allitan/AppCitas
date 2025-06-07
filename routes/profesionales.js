@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt');
 const { authenticateProfesional } = require('../middleware/authoProfesionalMiddleware');
 
 // Mostrar todos los profesionales
-router.get('/', (req, res) =>{
+router.get('/', authenticateProfesional, (req, res) =>{
     const query = 'SELECT * FROM Profesional';
 
     db.query(query, (err, results) =>{
@@ -20,7 +20,7 @@ router.get('/', (req, res) =>{
 });
 
 //Mostrar el profesional dependiendo del id de cada profesional
-router.get('/:id', (req, res) =>{
+router.get('/:id', authenticateProfesional, (req, res) =>{
     const profesionalId = req.params.id;
     const query = 'SELECT * FROM Profesional WHERE ID_Profesional = ?';
     
@@ -41,7 +41,7 @@ router.get('/:id', (req, res) =>{
 });
 
 // Asociar un servicio existente a un profesional
-router.post('/:profesionalId/servicios', (req, res) => {
+router.post('/:profesionalId/servicios', authenticateProfesional, (req, res) => {
     const profesionalId = req.params.profesionalId;
     const { servicioId } = req.body;
 
@@ -60,7 +60,7 @@ router.post('/:profesionalId/servicios', (req, res) => {
 });
 
 // Obtener los servicios ofrecidos por un profesional
-router.get('/:profesionalId/servicios', (req, res) => {
+router.get('/:profesionalId/servicios', authenticateProfesional, (req, res) => {
     const profesionalId = req.params.profesionalId;
     const query = `
         SELECT s.ID_Servicio, s.Nombre, s.Duración, s.Precio
@@ -78,7 +78,7 @@ router.get('/:profesionalId/servicios', (req, res) => {
     });
 });
 
-router.get('/:profesionalId/servicios/:servicioId', (req, res) => {
+router.get('/:profesionalId/servicios/:servicioId', authenticateProfesional, (req, res) => {
     const profesionalId = req.params.profesionalId;
     const servicioId = req.params.servicioId;
     const query = `
@@ -104,7 +104,7 @@ router.get('/:profesionalId/servicios/:servicioId', (req, res) => {
 
 
 // Desasociar un servicio de un profesional
-router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
+router.delete('/:profesionalId/servicios/:servicioId', authenticateProfesional, (req, res) => {
     const profesionalId = req.params.profesionalId;
     const servicioId = req.params.servicioId;
     const query = 'DELETE FROM ProfesionalServicio WHERE ID_Profesional = ? AND ID_Servicio = ?';
@@ -167,17 +167,13 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
                 console.error(`Error fetching disponibilidad for profesional ID ${profesionalId}:`, err);
                 return res.status(500).json({error: 'Error al obtener la disponibilidad.'});
             }
-
-            if(results.length === 0){
-                return res.status(404).json({message: `No se encontró disponibilidad para el profesional con ID ${profesionalId}.`});
-            }
-
-            res.json({ data: results }); // Respuesta consistente con clave 'data'
+            // Siempre retornar un array, aunque esté vacío
+            res.json({ data: results });
         });
     });
 
     // Ruta para actualizar un horario de disponibilidad específico de un profesional
-    router.put('/:profesionalId/disponibilidad/:disponibilidadId', (req, res) => {
+    router.put('/:profesionalId/disponibilidad/:disponibilidadId', authenticateProfesional, (req, res) => {
         const profesionalId = req.params.profesionalId;
         const disponibilidadId = req.params.disponibilidadId;
         const { dia, horaInicio, horaFin } = req.body;
@@ -228,7 +224,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
     });
 
     // Ruta para eliminar un horario de disponibilidad específico de un profesional
-    router.delete('/:profesionalId/disponibilidad/:disponibilidadId', (req, res) => {
+    router.delete('/:profesionalId/disponibilidad/:disponibilidadId', authenticateProfesional, (req, res) => {
         const profesionalId = req.params.profesionalId;
         const disponibilidadId = req.params.disponibilidadId;
         const query = 'DELETE FROM Disponibilidad WHERE ID_Disponibilidad = ? AND ID_Profesional = ?';
@@ -457,5 +453,41 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
             return res.status(500).json({ error: 'Error interno del servidor al iniciar sesión del profesional.' });
         }
     });
+
+// Actualizar perfil de un profesional
+router.put('/:profesionalId', authenticateProfesional, async (req, res) => {
+    const profesionalId = req.params.profesionalId;
+    const authenticatedProfesionalId = req.profesionalId;
+    const { Nombre, Email, Especialidad, Teléfono } = req.body;
+
+    if (String(profesionalId) !== String(authenticatedProfesionalId)) {
+        return res.status(403).json({ error: 'No tienes permiso para actualizar este perfil.' });
+    }
+
+    if (!Nombre && !Email && !Especialidad && !Teléfono) {
+        return res.status(400).json({ error: 'Proporciona al menos un campo para actualizar.' });
+    }
+
+    const updates = [];
+    const values = [];
+    if (Nombre) { updates.push('Nombre = ?'); values.push(Nombre); }
+    if (Email) { updates.push('Email = ?'); values.push(Email); }
+    if (Especialidad) { updates.push('Especialidad = ?'); values.push(Especialidad); }
+    if (Teléfono) { updates.push('Teléfono = ?'); values.push(Teléfono); }
+
+    const query = `UPDATE Profesional SET ${updates.join(', ')} WHERE ID_Profesional = ?`;
+    values.push(profesionalId);
+
+    try {
+        const [result] = await db.promise().query(query, values);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'No se encontró el profesional.' });
+        }
+        res.json({ message: 'Perfil actualizado exitosamente.' });
+    } catch (err) {
+        console.error('Error al actualizar el perfil del profesional:', err);
+        res.status(500).json({ error: 'Error al actualizar el perfil.' });
+    }
+});
 
 module.exports = router;

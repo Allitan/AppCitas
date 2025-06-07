@@ -26,7 +26,7 @@ router.post('/', (req, res) => {
 });
 
 // Ruta para obtener todos los clientes
-router.get('/', (req, res) =>{
+router.get('/', authenticateClient, (req, res) =>{
     const query = 'SELECT ID_Cliente, Nombre, Email FROM Cliente';
 
     db.query(query, (err, results) =>{
@@ -43,11 +43,11 @@ router.get('/:clienteId', authenticateClient, (req, res) =>{
     const clienteId = req.params.clienteId;
     const authenticatedClientId = req.clientId; // ID del cliente autenticado del token
 
-    if (clienteId !== authenticatedClientId) {
+    if (String(clienteId) !== String(authenticatedClientId)) {
         return res.status(403).json({ error: 'No tienes permiso para ver la información de este cliente.' });
     }
 
-    const query = 'SELECT ID_Cliente, Nombre, Email FROM Cliente WHERE ID_Cliente = ?';
+    const query = 'SELECT ID_Cliente, Nombre, Email, Teléfono FROM Cliente WHERE ID_Cliente = ?';
 
     db.query(query, [clienteId], (err, results) =>{
         if(err){
@@ -64,7 +64,7 @@ router.get('/:clienteId', authenticateClient, (req, res) =>{
 });
 
 // Ruta para actualizar un cliente
-router.put('/:clienteId', (req, res) =>{
+router.put('/:clienteId', authenticateClient, (req, res) =>{
     const clienteId = req.params.clienteId;
     const {Nombre, Email} = req.body;
 
@@ -102,7 +102,7 @@ router.put('/:clienteId', (req, res) =>{
 });
 
 // Ruta para eliminar un cliente especifico por si ID
-router.delete('/:clienteId', (req,res) => {
+router.delete('/:clienteId', authenticateClient, (req,res) => {
     const clienteId = req.params.clienteId;
     const query = 'DELETE FROM Cliente WHERE ID_Cliente = ?';
 

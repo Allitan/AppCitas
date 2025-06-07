@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AppCitas - Login y Registro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="frontend-login.css" rel="stylesheet">
+</head>
+<body>
+    <div class="login-card">
+        <div class="brand">AppCitas</div>
+        <ul class="nav nav-tabs mb-3" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab">Iniciar Sesión</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab">Registrarse</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="mainTabsContent">
+            <!-- LOGIN -->
+            <div class="tab-pane fade show active" id="login" role="tabpanel">
+                <ul class="nav nav-tabs mb-3" id="loginTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="prof-login-tab" data-bs-toggle="tab" data-bs-target="#profesional-login" type="button" role="tab">Profesional</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cli-login-tab" data-bs-toggle="tab" data-bs-target="#cliente-login" type="button" role="tab">Cliente</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="loginTabsContent">
+                    <div class="tab-pane fade show active" id="profesional-login" role="tabpanel">
+                        <form id="prof-login-form">
+                            <div class="mb-3">
+                                <label for="prof-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="prof-email" required autocomplete="username">
+                            </div>
+                            <div class="mb-3">
+                                <label for="prof-password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="prof-password" required autocomplete="current-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Iniciar Sesión</button>
+                            <div id="prof-login-msg" class="mt-2"></div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="cliente-login" role="tabpanel">
+                        <form id="cli-login-form">
+                            <div class="mb-3">
+                                <label for="cli-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="cli-email" required autocomplete="username">
+                            </div>
+                            <div class="mb-3">
+                                <label for="cli-password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="cli-password" required autocomplete="current-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Iniciar Sesión</button>
+                            <div id="cli-login-msg" class="mt-2"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- REGISTRO -->
+            <div class="tab-pane fade" id="register" role="tabpanel">
+                <ul class="nav nav-tabs mb-3" id="registerTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="prof-reg-tab" data-bs-toggle="tab" data-bs-target="#profesional-reg" type="button" role="tab">Profesional</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cli-reg-tab" data-bs-toggle="tab" data-bs-target="#cliente-reg" type="button" role="tab">Cliente</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="registerTabsContent">
+                    <div class="tab-pane fade show active" id="profesional-reg" role="tabpanel">
+                        <form id="prof-reg-form">
+                            <div class="mb-3">
+                                <label for="prof-reg-nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="prof-reg-nombre" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="prof-reg-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="prof-reg-email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="prof-reg-telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="prof-reg-telefono">
+                            </div>
+                            <div class="mb-3">
+                                <label for="prof-reg-password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="prof-reg-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Registrarse</button>
+                            <div id="prof-reg-msg" class="mt-2"></div>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="cliente-reg" role="tabpanel">
+                        <form id="cli-reg-form">
+                            <div class="mb-3">
+                                <label for="cli-reg-nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="cli-reg-nombre" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cli-reg-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="cli-reg-email" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cli-reg-telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="cli-reg-telefono">
+                            </div>
+                            <div class="mb-3">
+                                <label for="cli-reg-password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="cli-reg-password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Registrarse</button>
+                            <div id="cli-reg-msg" class="mt-2"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="frontend-login.js"></script>
+</body>
+</html>

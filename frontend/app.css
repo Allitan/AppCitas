@@ -1,0 +1,45 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #f8f9fa;
+}
+#main-content {
+    min-height: 80vh;
+    background: #f8f9fa;
+    border-radius: 1rem;
+    box-shadow: 0 0 32px rgba(0,0,0,0.04);
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    padding: 2rem 1rem;
+}
+
+.card.profile-card {
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    font-size: 1.15rem;
+    padding: 2rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+    #main-content {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        padding: 1rem 0.5rem;
+        border-radius: 0.5rem;
+    }
+    .card.profile-card {
+        max-width: 98vw;
+        padding: 1rem 0.5rem;
+        font-size: 1rem;
+    }
+}
+@media (max-width: 768px) {
+    #main-content {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+        padding: 1rem 0.5rem;
+        border-radius: 0.5rem;
+    }
+}

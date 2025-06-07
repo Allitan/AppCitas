@@ -1,0 +1,46 @@
+body {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.login-card {
+    background: #fff;
+    border-radius: 1rem;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+    padding: 2.5rem 2rem 2rem 2rem;
+    max-width: 400px;
+    width: 100%;
+}
+.nav-tabs .nav-link.active {
+    background: #2575fc;
+    color: #fff !important;
+    border: none;
+}
+.nav-tabs .nav-link {
+    color: #2575fc;
+    border: none;
+}
+.form-control:focus {
+    border-color: #2575fc;
+    box-shadow: 0 0 0 0.2rem rgba(37,117,252,.15);
+}
+.brand {
+    font-weight: bold;
+    font-size: 2rem;
+    color: #2575fc;
+    letter-spacing: 1px;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.btn-primary {
+    background: #2575fc;
+    border: none;
+}
+.btn-primary:hover {
+    background: #1a5dcc;
+}
+.fade {
+    transition: opacity 0.2s linear;
+}

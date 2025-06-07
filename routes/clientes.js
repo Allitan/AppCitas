@@ -122,7 +122,7 @@ router.delete('/:clienteId', (req,res) => {
 
 // Ruta para registrar un nuevo cliente
 router.post('/registro', async (req, res) => {
-    const { Nombre, Email, Contraseña } = req.body;
+    const { Nombre, Email, Teléfono, Contraseña } = req.body;
 
     // Validar que todos los campos obligatorios estén presentes
     if (!Nombre || !Email || !Contraseña) {
@@ -143,8 +143,8 @@ router.post('/registro', async (req, res) => {
         const hashedPassword = await bcrypt.hash(Contraseña, saltRounds);
 
         // Insertar el nuevo cliente en la base de datos
-        const insertQuery = 'INSERT INTO Cliente (Nombre, Email, Contraseña) VALUES (?, ?, ?)';
-        const [result] = await db.promise().query(insertQuery, [Nombre, Email, hashedPassword]);
+        const insertQuery = 'INSERT INTO Cliente (Nombre, Email, Teléfono, Contraseña) VALUES (?, ?, ?, ?)';
+        const [result] = await db.promise().query(insertQuery, [Nombre, Email, Teléfono, hashedPassword]);
 
         res.status(201).json({ message: 'Cliente registrado exitosamente.', clientId: result.insertId });
 

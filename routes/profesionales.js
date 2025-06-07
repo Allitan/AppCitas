@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const { authenticateProfesional } = require('../middleware/authoProfesionalMiddleware');
 
 // Mostrar todos los profesionales
@@ -384,7 +385,7 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
 
     // Ruta para registrar un nuevo profesional
     router.post('/registro', async (req, res) => {
-        const { Nombre, Email, Teléfono, Contraseña } = req.body;
+        const { Nombre, Email, Contraseña, Teléfono } = req.body;
 
         // Validar que todos los campos obligatorios estén presentes
         if (!Nombre || !Email || !Contraseña) {
@@ -405,8 +406,8 @@ router.delete('/:profesionalId/servicios/:servicioId', (req, res) => {
             const hashedPassword = await bcrypt.hash(Contraseña, saltRounds);
 
             // Insertar el nuevo profesional en la base de datos
-            const insertQuery = 'INSERT INTO Profesional (Nombre, Email, Teléfono, Contraseña) VALUES (?, ?, ?, ?)';
-            const [result] = await db.promise().query(insertQuery, [Nombre, Email, Teléfono, hashedPassword]);
+            const insertQuery = 'INSERT INTO Profesional (Nombre, Email, Contraseña, Teléfono) VALUES (?, ?, ?, ?)';
+            const [result] = await db.promise().query(insertQuery, [Nombre, Email, hashedPassword, Teléfono]);
 
             res.status(201).json({ message: 'Profesional registrado exitosamente.', profesionalId: result.insertId });
 

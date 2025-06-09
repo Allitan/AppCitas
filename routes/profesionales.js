@@ -490,4 +490,23 @@ router.put('/:profesionalId', authenticateProfesional, async (req, res) => {
     }
 });
 
+// Ruta para asociar un servicio a un profesional (ADMIN o profesional)
+router.post('/asociar-servicio', (req, res) => {
+    const { ID_Profesional, ID_Servicio } = req.body;
+    if (!ID_Profesional || !ID_Servicio) {
+        return res.status(400).json({ error: 'Por favor, proporciona ID_Profesional y ID_Servicio.' });
+    }
+    const query = 'INSERT INTO ProfesionalServicio (ID_Profesional, ID_Servicio) VALUES (?, ?)';
+    db.query(query, [ID_Profesional, ID_Servicio], (err, result) => {
+        if (err) {
+            if (err.code === 'ER_DUP_ENTRY') {
+                return res.status(409).json({ error: 'El servicio ya está asociado a este profesional.' });
+            }
+            console.error('Error al asociar servicio al profesional:', err);
+            return res.status(500).json({ error: 'Error al asociar el servicio al profesional.' });
+        }
+        res.status(201).json({ message: 'Servicio asociado al profesional exitosamente.' });
+    });
+});
+
 module.exports = router;

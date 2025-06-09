@@ -169,17 +169,35 @@ router.post('/', (req, res) => {
                     return res.status(400).json({ error: 'El servicio proporcionado no existe o no está ofrecido por el profesional.' });
                 }
 
+                // DEBUG extra: log día y consulta de disponibilidad
+                // console.log('Fecha recibida:', Fecha);
+                // Cálculo correcto del día de la semana en inglés, sin desfase de zona horaria
+                const [year, month, day] = Fecha.split('-').map(Number);
+                const fechaObj = new Date(Date.UTC(year, month - 1, day));
+                const dayNameEn = fechaObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+                // console.log('Día calculado (en inglés, UTC):', dayNameEn);
+                // const disponibilidadDebugQuery = `
+                //     SELECT * FROM Disponibilidad
+                //     WHERE ID_Profesional = ? AND Dia = ?
+                // `;
+                // db.query(disponibilidadDebugQuery, [ID_Profesional, dayNameEn], (err, rows) => {
+                //     if (!err) {
+                //         console.log('Disponibilidad encontrada en BD:', rows);
+                //     }
+                // });
                 const disponibilidadQuery = `
                     SELECT ID_Disponibilidad
                     FROM Disponibilidad
-                    WHERE ID_Profesional = ? AND Dia = DAYNAME(?)
+                    WHERE ID_Profesional = ? AND Dia = ?
                     AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin)
                 `;
-                db.query(disponibilidadQuery, [ID_Profesional, Fecha, Hora, Hora], (err, disponibilidadResult) => {
+                // console.log('Consulta disponibilidad params:', [ID_Profesional, dayNameEn, Hora, Hora]);
+                db.query(disponibilidadQuery, [ID_Profesional, dayNameEn, Hora, Hora], (err, disponibilidadResult) => {
                     if (err) {
                         console.error('Error al verificar la disponibilidad:', err);
                         return res.status(500).json({ error: 'Error interno del servidor al crear la cita.' });
                     }
+                    console.log('Resultado de disponibilidad:', disponibilidadResult);
                     if (disponibilidadResult.length === 0) {
                         return res.status(400).json({ error: 'El profesional no está disponible en la fecha y hora solicitadas.' });
                     }
@@ -228,8 +246,17 @@ router.post('/', (req, res) => {
                                     return res.status(500).json({ error: 'Error interno del servidor al crear la cita.' });
                                 }
 
-                                const newCitaId = citaResult.insertId;
-                                res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                // Eliminar la disponibilidad usada correctamente (cubre la hora de la cita)
+                                const deleteDispQuery = `DELETE FROM Disponibilidad WHERE ID_Profesional = ? AND Dia = ? AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin)`;
+                                db.query(deleteDispQuery, [ID_Profesional, dayNameEn, Hora, Hora], (err, delResult) => {
+                                    if (err) {
+                                        console.error('Error al eliminar la disponibilidad tras agendar cita:', err);
+                                        // No bloquea la creación de la cita, solo loguea
+                                    }
+                                    // Continúa con la respuesta
+                                    const newCitaId = citaResult.insertId;
+                                    res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                });
                             });
                         });
                     });
@@ -242,22 +269,20 @@ router.post('/', (req, res) => {
 // Ruta para obtener todas las citas de un cliente específico
 router.get('/clientes/:clienteId/citas', (req, res) => {
     const clienteId = req.params.clienteId;
-    const query = 'SELECT ID_Cita, ID_Profesional, ID_Servicio, Fecha, Hora, Estado FROM Cita WHERE ID_Cliente = ?';
-
+    const query = `
+        SELECT c.ID_Cita, c.ID_Profesional, c.ID_Servicio, c.Fecha, c.Hora, c.Estado,
+               p.Nombre AS NombreProfesional, p.Especialidad AS EspecialidadProfesional
+        FROM Cita c
+        JOIN Profesional p ON c.ID_Profesional = p.ID_Profesional
+        WHERE c.ID_Cliente = ?
+    `;
     db.query(query, [clienteId], (err, results) => {
         if (err) {
             console.error(`Error fetching citas for cliente ID ${clienteId}:`, err);
             return res.status(500).json({ error: 'Error al obtener las citas del cliente.' });
         }
-
-        if (results.length === 0) {
-            return res.status(404).json({ message: `No se encontraron citas para el cliente con ID ${clienteId}.` });
-        }
-
         res.json(results);
     });
 });
-
-
 
 module.exports = router;

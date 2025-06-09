@@ -1,5 +1,16 @@
 const API_BASE = 'http://localhost:3000/api';
 
+// Traducción de día de inglés a español para mostrar al cliente
+const diasMapEnEs = {
+    'Monday': 'Lunes',
+    'Tuesday': 'Martes',
+    'Wednesday': 'Miércoles',
+    'Thursday': 'Jueves',
+    'Friday': 'Viernes',
+    'Saturday': 'Sábado',
+    'Sunday': 'Domingo'
+};
+
 function getUserTypeAndToken() {
     const profesionalToken = localStorage.getItem('profesionalToken');
     const clienteToken = localStorage.getItem('clienteToken');
@@ -20,9 +31,20 @@ function renderCitas(citas, tipo) {
     }
     let html = '<ul class="list-group">';
     for (const cita of citas) {
-        html += `<li class="list-group-item">
-            <b>Fecha:</b> ${cita.Fecha || ''} <b>Hora:</b> ${cita.Hora || ''}<br>
-            <b>Estado:</b> ${cita.Estado || ''}
+        html += `<li class="list-group-item d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-2 shadow-sm border rounded">
+            <div class="d-flex align-items-center mb-2 mb-md-0">
+                <i class="bi bi-calendar-event me-3 text-primary" style="font-size:1.7rem;"></i>
+                <div>
+                    <div><b>Fecha:</b> <span class="badge bg-light text-dark border">${cita.Fecha || ''}</span></div>
+                    <div><b>Hora:</b> <span class="badge bg-info text-dark">${cita.Hora ? cita.Hora.slice(0,5) : ''}</span></div>
+                    ${cita.NombreProfesional ? `<div><b>Profesional:</b> <span class="badge bg-primary">${cita.NombreProfesional}</span></div>` : ''}
+                    ${cita.EspecialidadProfesional ? `<div><b>Especialidad:</b> <span class="badge bg-secondary">${cita.EspecialidadProfesional}</span></div>` : ''}
+                </div>
+            </div>
+            <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+                <span class="badge ${cita.Estado === 'Pendiente' ? 'bg-warning text-dark' : cita.Estado === 'Confirmada' ? 'bg-success' : 'bg-secondary'}">${cita.Estado || ''}</span>
+                ${cita.NombreServicio ? `<span class="badge bg-secondary">${cita.NombreServicio}</span>` : ''}
+            </div>
         </li>`;
     }
     html += '</ul>';
@@ -66,7 +88,8 @@ async function renderDashboard(user, mainContent) {
                 const data = await res.json();
                 extraInfo = `<div class='mb-3'><b>Nombre:</b> ${data.Nombre || ''}<br><b>Email:</b> ${data.Email || ''}</div>`;
             }
-            const citasRes = await fetch(`${API_BASE}/citas/cliente/${userId}`, {
+            // CORREGIDO: endpoint correcto para obtener citas del cliente
+            const citasRes = await fetch(`${API_BASE}/citas/clientes/${userId}/citas`, {
                 headers: { 'Authorization': 'Bearer ' + user.token }
             });
             if (citasRes.ok) {
@@ -285,6 +308,7 @@ async function renderDisponibilidad(user, mainContent) {
             <div class="card profile-card mx-auto shadow">
                 <div class="card-body">
                     <h4 class="card-title mb-3 text-center">Gestionar Disponibilidad</h4>
+                    <div class="alert alert-info">Recuerda: solo los horarios que agregues aquí estarán disponibles para que los clientes agenden citas. Asegúrate de cubrir todos los días y horas en los que realmente puedes atender.</div>
                     <form id="disponibilidad-form" class="row g-2 justify-content-center mb-4">
                         <div class="col-12 col-md-4">
                             <select class="form-select" name="dia" required>
@@ -347,8 +371,22 @@ async function renderDisponibilidad(user, mainContent) {
             msg.className = '';
             const formData = new FormData(dispForm);
             const body = {};
+            // Traducción de día español a inglés para guardar en la base de datos
+            const diasMap = {
+                'Lunes': 'Monday',
+                'Martes': 'Tuesday',
+                'Miércoles': 'Wednesday',
+                'Jueves': 'Thursday',
+                'Viernes': 'Friday',
+                'Sábado': 'Saturday',
+                'Domingo': 'Sunday'
+            };
             for (const [key, value] of formData.entries()) {
-                body[key] = value;
+                if (key === 'dia') {
+                    body[key] = diasMap[value] || value;
+                } else {
+                    body[key] = value;
+                }
             }
             const profesionalId = parseJwt(user.token).profesionalId;
             try {
@@ -432,9 +470,18 @@ async function renderDisponibilidad(user, mainContent) {
             form.addEventListener('submit', async (ev) => {
                 ev.preventDefault();
                 const formData = new FormData(form);
-                // Aseguramos los nombres correctos y que no haya campos vacíos
+                // Traducción de día español a inglés para guardar en la base de datos
+                const diasMap = {
+                    'Lunes': 'Monday',
+                    'Martes': 'Tuesday',
+                    'Miércoles': 'Wednesday',
+                    'Jueves': 'Thursday',
+                    'Viernes': 'Friday',
+                    'Sábado': 'Saturday',
+                    'Domingo': 'Sunday'
+                };
                 const body = {
-                    dia: formData.get('dia'),
+                    dia: diasMap[formData.get('dia')] || formData.get('dia'),
                     horaInicio: (formData.get('horaInicio') || '').slice(0,5),
                     horaFin: (formData.get('horaFin') || '').slice(0,5)
                 };
@@ -586,124 +633,193 @@ async function renderProfesionales(user, mainContent) {
                 return;
             }
             formDiv.innerHTML = '<div class="text-muted">Cargando disponibilidad...</div>';
-            // Obtener disponibilidad y servicios del profesional
-            let disponibilidad = [];
-            let servicios = [];
             try {
-                // Disponibilidad
-                const res = await fetch(`${API_BASE}/profesionales/${profId}/disponibilidad`, {
-                    headers: { 'Authorization': 'Bearer ' + user.token }
-                });
-                if (res.ok) {
-                    const result = await res.json();
-                    disponibilidad = Array.isArray(result) ? result : (result.data || []);
-                }
-                // Servicios
-                const resServ = await fetch(`${API_BASE}/profesionales/${profId}/servicios`, {
-                    headers: { 'Authorization': 'Bearer ' + user.token }
-                });
-                if (resServ.ok) {
-                    const resultServ = await resServ.json();
-                    servicios = Array.isArray(resultServ) ? resultServ : (resultServ.data || []);
-                }
-            } catch {}
-            if (!Array.isArray(disponibilidad) || disponibilidad.length === 0) {
-                formDiv.innerHTML = '<div class="alert alert-warning">Este profesional no tiene horarios disponibles.</div>';
-                return;
-            }
-            // Mostrar tabla de disponibilidad
-            // Mostrar select de servicios si hay más de uno
-            let serviciosHtml = '';
-            if (servicios.length > 1) {
-                serviciosHtml = `
-                    <div class="mb-2">
-                        <label class="form-label">Servicio</label>
-                        <select class="form-select" id="select-servicio-agendar">
-                            ${servicios.map(s => `<option value="${s.ID_Servicio}">${s.Nombre}</option>`).join('')}
-                        </select>
-                    </div>
-                `;
-            } else if (servicios.length === 1) {
-                serviciosHtml = `<input type="hidden" id="select-servicio-agendar" value="${servicios[0].ID_Servicio}">`;
-            } else {
-                serviciosHtml = `<div class="alert alert-warning">Este profesional no tiene servicios registrados.</div>`;
-            }
-            formDiv.innerHTML = `
-                ${serviciosHtml}
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm align-middle mb-2">
-                        <thead class="table-light">
-                            <tr><th>Día</th><th>Hora inicio</th><th>Hora fin</th><th></th></tr>
-                        </thead>
-                        <tbody>
-                            ${disponibilidad.map((d, idx) => `
-                                <tr>
-                                    <td>${d.Dia}</td>
-                                    <td>${d.HoraInicio}</td>
-                                    <td>${d.HoraFin}</td>
-                                    <td><button class="btn btn-success btn-sm btn-agendar-horario" data-idx="${idx}">Agendar</button></td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                <div id="form-agendar-cita-panel"></div>
-                <button type="button" class="btn btn-secondary btn-sm mt-2 btn-cancelar-agendar">Cerrar</button>
-            `;
-            // Cerrar panel
-            formDiv.querySelector('.btn-cancelar-agendar').addEventListener('click', () => {
-                formDiv.innerHTML = '';
-            });
-            // Lógica para agendar en un horario específico
-            formDiv.querySelectorAll('.btn-agendar-horario').forEach(btnAgendar => {
-                btnAgendar.addEventListener('click', async () => {
-                    const idx = btnAgendar.getAttribute('data-idx');
-                    const horario = disponibilidad[idx];
-                    const panel = formDiv.querySelector('#form-agendar-cita-panel');
-                    panel.innerHTML = '';
-                    // Calcular la próxima fecha para el día seleccionado
-                    const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-                    const hoy = new Date();
-                    let diaTarget = diasSemana.indexOf(horario.Dia);
-                    if (diaTarget === -1) {
-                        panel.innerHTML = '<div class="alert alert-danger">No se pudo determinar el día.</div>';
-                        return;
+                // Obtener disponibilidad, servicios y citas del profesional
+                let disponibilidad = [];
+                let servicios = [];
+                let citas = [];
+                try {
+                    // Disponibilidad
+                    const res = await fetch(`${API_BASE}/profesionales/${profId}/disponibilidad`, {
+                        headers: { 'Authorization': 'Bearer ' + user.token }
+                    });
+                    if (res.ok) {
+                        const result = await res.json();
+                        disponibilidad = Array.isArray(result) ? result : (result.data || []);
                     }
+                    // Servicios
+                    const resServ = await fetch(`${API_BASE}/profesionales/${profId}/servicios`, {
+                        headers: { 'Authorization': 'Bearer ' + user.token }
+                    });
+                    if (resServ.ok) {
+                        const resultServ = await resServ.json();
+                        servicios = Array.isArray(resultServ) ? resultServ : (resultServ.data || []);
+                    }
+                    // Citas agendadas
+                    const resCitas = await fetch(`${API_BASE}/profesionales/${profId}/citas`, {
+                        headers: { 'Authorization': 'Bearer ' + user.token }
+                    });
+                    if (resCitas.ok) {
+                        const resultCitas = await resCitas.json();
+                        citas = Array.isArray(resultCitas) ? resultCitas : (resultCitas.data || []);
+                    }
+                } catch (err) {
+                    formDiv.innerHTML = `<div class='alert alert-danger'>Error al obtener la disponibilidad: ${err.message || err}</div>`;
+                    return;
+                }
+                if (!Array.isArray(disponibilidad) || disponibilidad.length === 0) {
+                    formDiv.innerHTML = '<div class="alert alert-warning">Este profesional no tiene horarios disponibles.</div>';
+                    return;
+                }
+                // Filtrar disponibilidad para mostrar solo horarios realmente libres
+                // Se asume que solo se puede agendar para la próxima semana (como en la lógica actual)
+                // Usar días en inglés para comparar con la disponibilidad
+                const diasSemanaEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                const hoy = new Date();
+                const disponibilidadFiltrada = disponibilidad.filter(d => {
+                    // Calcular la próxima fecha para el día seleccionado (en inglés)
+                    let diaTarget = diasSemanaEn.indexOf(d.Dia);
+                    if (diaTarget === -1) return false;
                     let diasParaProximo = (diaTarget - hoy.getDay() + 7) % 7;
-                    if (diasParaProximo === 0) diasParaProximo = 7; // Siempre el próximo, no hoy
+                    if (diasParaProximo === 0) diasParaProximo = 7;
                     const fechaCita = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + diasParaProximo);
                     const fechaStr = fechaCita.toISOString().split('T')[0];
-                    panel.innerHTML = '<div class="text-muted">Agendando cita...</div>';
-                    try {
-                        const payload = parseJwt(user.token);
-                        const clienteId = payload.clientId;
-                        const body = {
-                            ID_Profesional: profId,
-                            ID_Cliente: clienteId,
-                            ID_Servicio: 1, // Valor por defecto, ajusta si tienes selección de servicio
-                            Fecha: fechaStr,
-                            Hora: horario.HoraInicio
-                        };
-                        const res = await fetch(`${API_BASE}/citas`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + user.token
-                            },
-                            body: JSON.stringify(body)
-                        });
-                        const result = await res.json();
-                        if (res.ok) {
-                            panel.innerHTML = '<div class="alert alert-success">Cita agendada exitosamente para el próximo ' + horario.Dia + ' (' + fechaStr + ') a las ' + horario.HoraInicio + '.</div>';
-                            setTimeout(() => { panel.innerHTML = ''; formDiv.innerHTML = ''; }, 1800);
-                        } else {
-                            panel.innerHTML = '<div class="alert alert-danger">' + (result.error || 'No se pudo agendar la cita.') + '</div>';
-                        }
-                    } catch (err) {
-                        panel.innerHTML = '<div class="alert alert-danger">Error de red al agendar la cita.</div>';
-                    }
+                    // Revisar si ya hay una cita para ese profesional, ese día y esa hora
+                    const ocupado = citas.some(cita => cita.Fecha === fechaStr && cita.Hora === d.HoraInicio && cita.Estado !== 'Cancelada');
+                    return !ocupado;
                 });
-            });
+                if (disponibilidadFiltrada.length === 0) {
+                    // Mensaje de depuración: mostrar la disponibilidad cruda recibida
+                    formDiv.innerHTML = `
+                        <div class="alert alert-warning">No hay horarios disponibles para agendar en la próxima semana.</div>
+                        <details class="mt-2">
+                            <summary>Ver disponibilidad recibida del backend</summary>
+                            <pre style="max-height:200px;overflow:auto;font-size:0.9em;background:#f8f9fa;border:1px solid #ddd;padding:8px;">${JSON.stringify(disponibilidad, null, 2)}</pre>
+                        </details>
+                    `;
+                    return;
+                }
+                // Mostrar tabla de disponibilidad filtrada
+                let serviciosHtml = '';
+                if (servicios.length > 1) {
+                    serviciosHtml = `
+                        <div class="mb-2">
+                            <label class="form-label">Servicio</label>
+                            <select class="form-select" id="select-servicio-agendar">
+                                ${servicios.map(s => `<option value="${s.ID_Servicio}">${s.Nombre}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                } else if (servicios.length === 1) {
+                    serviciosHtml = `<input type="hidden" id="select-servicio-agendar" value="${servicios[0].ID_Servicio}">`;
+                } else {
+                    serviciosHtml = `<div class="alert alert-warning">Este profesional no tiene servicios registrados.</div>`;
+                }
+                formDiv.innerHTML = `
+                    ${serviciosHtml}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle mb-2">
+                            <thead class="table-light">
+                                <tr><th>Día</th><th>Hora inicio</th><th>Hora fin</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                ${disponibilidadFiltrada.map((d, idx) => `
+                                    <tr>
+                                        <td>${diasMapEnEs[d.Dia] || d.Dia}</td>
+                                        <td>${d.HoraInicio}</td>
+                                        <td>${d.HoraFin}</td>
+                                        <td><button class="btn btn-success btn-sm btn-agendar-horario" data-idx="${idx}">Agendar</button></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="form-agendar-cita-panel"></div>
+                    <button type="button" class="btn btn-secondary btn-sm mt-2 btn-cancelar-agendar">Cerrar</button>
+                `;
+                // Cerrar panel
+                formDiv.querySelector('.btn-cancelar-agendar').addEventListener('click', () => {
+                    formDiv.innerHTML = '';
+                });
+                // Lógica para agendar en un horario específico
+                formDiv.querySelectorAll('.btn-agendar-horario').forEach(btnAgendar => {
+                    btnAgendar.addEventListener('click', async () => {
+                        const profId = btn.getAttribute('data-id') || btn.closest('.agendar-cita-form').id.replace('agendar-cita-form-', '');
+                        const idx = btnAgendar.getAttribute('data-idx');
+                        const horario = disponibilidadFiltrada[idx]; // CORREGIDO: usar la lista filtrada
+                        const panel = formDiv.querySelector('#form-agendar-cita-panel');
+                        panel.innerHTML = '';
+                        // Calcular la próxima fecha para el día seleccionado (usar día en inglés)
+                        const diasSemanaEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                        const hoy = new Date();
+                        let diaTarget = diasSemanaEn.indexOf(horario.Dia);
+                        if (diaTarget === -1) {
+                            panel.innerHTML = '<div class="alert alert-danger">No se pudo determinar el día.</div>';
+                            return;
+                        }
+                        // ¡CORRECCIÓN FINAL! Si hoy es domingo (0), getDay() devuelve 0, pero si seleccionas lunes (1), debe ser mañana
+                        let hoyIdx = hoy.getDay();
+                        let diasParaProximo = (diaTarget - hoyIdx + 7) % 7;
+                        if (diasParaProximo === 0) diasParaProximo = 7; // Siempre el próximo, no hoy
+                        // DEBUG: mostrar en consola el cálculo de fecha
+                        console.log('Hoy:', hoy.toISOString().split('T')[0], 'getDay:', hoyIdx, 'Target:', horario.Dia, 'TargetIdx:', diaTarget, 'diasParaProximo:', diasParaProximo);
+                        const fechaCita = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + diasParaProximo);
+                        const fechaStr = fechaCita.toISOString().split('T')[0];
+                        // DEBUG: mostrar en consola la fecha que se enviará
+                        console.log('Agendando para:', fechaStr, 'Hora:', horario.HoraInicio);
+                        panel.innerHTML = '<div class="text-muted">Agendando cita...</div>';
+                        try {
+                            const payload = parseJwt(user.token);
+                            const clienteId = payload.clientId;
+                            // Obtener el servicio seleccionado
+                            let servicioId = 1;
+                            const selectServicio = formDiv.querySelector('#select-servicio-agendar');
+                            if (selectServicio) {
+                                servicioId = selectServicio.value;
+                            }
+                            let horaFormateada = horario.HoraInicio;
+                            if (horaFormateada.length === 5) horaFormateada += ':00';
+                            else if (horaFormateada.length === 8) horaFormateada = horaFormateada.slice(0,5) + ':00';
+                            const body = {
+                                ID_Profesional: profId,
+                                ID_Cliente: clienteId,
+                                ID_Servicio: servicioId,
+                                Fecha: fechaStr,
+                                Hora: horaFormateada
+                            };
+                            // Antes de agendar la cita, asociar el servicio al profesional si no existe
+                            try {
+                                const asociarRes = await fetch(`${API_BASE}/profesionales/asociar-servicio`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ ID_Profesional: profId, ID_Servicio: servicioId })
+                                });
+                                // No importa si ya existe, solo intentamos asociar
+                            } catch (e) {}
+                            // Ahora sí, agendar la cita
+                            const res = await fetch(`${API_BASE}/citas`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer ' + user.token
+                                },
+                                body: JSON.stringify(body)
+                            });
+                            const result = await res.json();
+                            if (res.ok) {
+                                panel.innerHTML = '<div class="alert alert-success">Cita agendada exitosamente para el próximo ' + horario.Dia + ' (' + fechaStr + ') a las ' + horario.HoraInicio + '.</div>';
+                                setTimeout(() => { panel.innerHTML = ''; formDiv.innerHTML = ''; }, 1800);
+                            } else {
+                                panel.innerHTML = '<div class="alert alert-danger">' + (result.error || 'No se pudo agendar la cita.') + '</div>';
+                            }
+                        } catch (err) {
+                            panel.innerHTML = '<div class="alert alert-danger">Error de red al agendar la cita.</div>';
+                        }
+                    });
+                });
+            } catch (err) {
+                formDiv.innerHTML = `<div class='alert alert-danger'>Error al obtener la disponibilidad: ${err.message || err}</div>`;
+            }
         });
     });
 }

@@ -203,19 +203,22 @@ router.post('/', (req, res) => {
                     }
 
                     // Verificar si hay citas existentes para el mismo profesional que se superponen
+                    // Nueva lógica: solo hay solapamiento si (inicioA < finB) Y (finA > inicioB)
+                    // Donde A es la nueva cita, B es una cita existente
+                    // Calculamos finA sumando la duración del servicio a la hora solicitada
                     const overlapQuery = `
-                        SELECT ID_Cita
-                        FROM Cita
-                        WHERE ID_Profesional = ?
-                          AND Fecha = ?
+                        SELECT c.ID_Cita
+                        FROM Cita c
+                        JOIN Servicio s ON c.ID_Servicio = s.ID_Servicio
+                        WHERE c.ID_Profesional = ?
+                          AND c.Fecha = ?
                           AND (
-                            (TIME(?) >= Hora AND TIME(?) < ADDTIME(Hora, (SELECT Duración FROM Servicio WHERE ID_Servicio = ?))) OR
-                            (TIME(?) < Hora AND ADDTIME(TIME(?), (SELECT Duración FROM Servicio WHERE ID_Servicio = ?)) > TIME(?)) OR
-                            (Hora >= TIME(?) AND ADDTIME(Hora, (SELECT Duración FROM Servicio WHERE ID_Servicio = ?)) <= TIME(?))
+                            TIME(?) < ADDTIME(c.Hora, s.Duración) AND
+                            ADDTIME(TIME(?), ?) > c.Hora
                           )
                     `;
 
-                    // Necesitamos obtener la duración del servicio para calcular la superposición
+                    // Obtener la duración del servicio solicitado
                     db.query('SELECT Duración FROM Servicio WHERE ID_Servicio = ?', [ID_Servicio], (err, duracionResult) => {
                         if (err) {
                             console.error('Error al obtener la duración del servicio:', err);
@@ -228,7 +231,7 @@ router.post('/', (req, res) => {
 
                         const duracionServicio = duracionResult[0].Duración;
 
-                        db.query(overlapQuery, [ID_Profesional, Fecha, Hora, Hora, ID_Servicio, Hora, Hora, ID_Servicio, Hora, Hora, ID_Servicio, Hora], (err, overlapResult) => {
+                        db.query(overlapQuery, [ID_Profesional, Fecha, Hora, Hora, duracionServicio], (err, overlapResult) => {
                             if (err) {
                                 console.error('Error al verificar citas superpuestas:', err);
                                 return res.status(500).json({ error: 'Error interno del servidor al crear la cita.' });
@@ -246,16 +249,79 @@ router.post('/', (req, res) => {
                                     return res.status(500).json({ error: 'Error interno del servidor al crear la cita.' });
                                 }
 
-                                // Eliminar la disponibilidad usada correctamente (cubre la hora de la cita)
-                                const deleteDispQuery = `DELETE FROM Disponibilidad WHERE ID_Profesional = ? AND Dia = ? AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin)`;
-                                db.query(deleteDispQuery, [ID_Profesional, dayNameEn, Hora, Hora], (err, delResult) => {
-                                    if (err) {
-                                        console.error('Error al eliminar la disponibilidad tras agendar cita:', err);
-                                        // No bloquea la creación de la cita, solo loguea
+                                // Eliminar o dividir la disponibilidad usada correctamente (cubre la hora de la cita)
+                                // Primero, obtener la franja de disponibilidad exacta
+                                const getDispQuery = `SELECT ID_Disponibilidad, HoraInicio, HoraFin FROM Disponibilidad WHERE ID_Profesional = ? AND Dia = ? AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin) LIMIT 1`;
+                                db.query(getDispQuery, [ID_Profesional, dayNameEn, Hora], (err, dispRows) => {
+                                    if (err || !dispRows || dispRows.length === 0) {
+                                        // Si falla, continuar como antes (eliminar la franja)
+                                        const deleteDispQuery = `DELETE FROM Disponibilidad WHERE ID_Profesional = ? AND Dia = ? AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin)`;
+                                        db.query(deleteDispQuery, [ID_Profesional, dayNameEn, Hora, Hora], () => {
+                                            const newCitaId = citaResult.insertId;
+                                            return res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                        });
+                                        return;
                                     }
-                                    // Continúa con la respuesta
-                                    const newCitaId = citaResult.insertId;
-                                    res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                    const disp = dispRows[0];
+                                    // Calcular hora de fin de la cita sumando la duración
+                                    db.query('SELECT Duración FROM Servicio WHERE ID_Servicio = ?', [ID_Servicio], (err, durRows) => {
+                                        if (err || !durRows || durRows.length === 0) {
+                                            // Si falla, eliminar la franja completa
+                                            const deleteDispQuery = `DELETE FROM Disponibilidad WHERE ID_Profesional = ? AND Dia = ? AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin)`;
+                                            db.query(deleteDispQuery, [ID_Profesional, dayNameEn, Hora, Hora], () => {
+                                                const newCitaId = citaResult.insertId;
+                                                return res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                            });
+                                            return;
+                                        }
+                                        const duracion = durRows[0].Duración;
+                                        // Hora de inicio y fin de la cita
+                                        const horaInicioCita = Hora;
+                                        // Sumar duración (en formato HH:MM:SS) a la hora de inicio
+                                        const addTime = (hora, dur) => {
+                                            // hora y dur en formato HH:MM:SS
+                                            const [h, m, s] = hora.split(':').map(Number);
+                                            const [dh, dm, ds] = dur.split(':').map(Number);
+                                            let totalS = s + ds;
+                                            let totalM = m + dm + Math.floor(totalS / 60);
+                                            let totalH = h + dh + Math.floor(totalM / 60);
+                                            totalS = totalS % 60;
+                                            totalM = totalM % 60;
+                                            totalH = totalH % 24;
+                                            return `${totalH.toString().padStart(2, '0')}:${totalM.toString().padStart(2, '0')}:${totalS.toString().padStart(2, '0')}`;
+                                        };
+                                        const horaFinCita = addTime(horaInicioCita, duracion);
+                                        // Si la cita ocupa toda la franja, eliminarla
+                                        if (disp.HoraInicio === horaInicioCita && disp.HoraFin === horaFinCita) {
+                                            db.query('DELETE FROM Disponibilidad WHERE ID_Disponibilidad = ?', [disp.ID_Disponibilidad], () => {
+                                                const newCitaId = citaResult.insertId;
+                                                return res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                            });
+                                        } else {
+                                            // Si la cita está en el medio, dividir la franja en dos
+                                            const queries = [];
+                                            if (disp.HoraInicio < horaInicioCita) {
+                                                // Crear franja antes de la cita
+                                                queries.push(new Promise((resolve) => {
+                                                    db.query('INSERT INTO Disponibilidad (Dia, HoraInicio, HoraFin, ID_Profesional) VALUES (?, ?, ?, ?)', [dayNameEn, disp.HoraInicio, horaInicioCita, ID_Profesional], resolve);
+                                                }));
+                                            }
+                                            if (horaFinCita < disp.HoraFin) {
+                                                // Crear franja después de la cita
+                                                queries.push(new Promise((resolve) => {
+                                                    db.query('INSERT INTO Disponibilidad (Dia, HoraInicio, HoraFin, ID_Profesional) VALUES (?, ?, ?, ?)', [dayNameEn, horaFinCita, disp.HoraFin, ID_Profesional], resolve);
+                                                }));
+                                            }
+                                            // Eliminar la franja original
+                                            queries.push(new Promise((resolve) => {
+                                                db.query('DELETE FROM Disponibilidad WHERE ID_Disponibilidad = ?', [disp.ID_Disponibilidad], resolve);
+                                            }));
+                                            Promise.all(queries).then(() => {
+                                                const newCitaId = citaResult.insertId;
+                                                return res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
+                                            });
+                                        }
+                                    });
                                 });
                             });
                         });

@@ -1,6 +1,6 @@
 const mysql = require('mysql2');
 
-requiere('dotenv').config();
+require('dotenv').config();
 
 const dbconfig = {
     host: 'localhost',

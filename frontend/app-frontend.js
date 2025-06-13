@@ -44,12 +44,38 @@ function renderCitas(citas, tipo) {
             <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
                 <span class="badge ${cita.Estado === 'Pendiente' ? 'bg-warning text-dark' : cita.Estado === 'Confirmada' ? 'bg-success' : 'bg-secondary'}">${cita.Estado || ''}</span>
                 ${cita.NombreServicio ? `<span class="badge bg-secondary">${cita.NombreServicio}</span>` : ''}
+                <button class="btn btn-outline-danger btn-sm btn-eliminar-cita" data-id="${cita.ID_Cita}"><i class="bi bi-trash"></i> Eliminar</button>
             </div>
         </li>`;
     }
     html += '</ul>';
     return html;
 }
+
+// Evento para eliminar cita (cliente o profesional)
+document.addEventListener('click', async function(e) {
+    if (e.target.classList.contains('btn-eliminar-cita')) {
+        const citaId = e.target.getAttribute('data-id');
+        if (!citaId) return;
+        if (!confirm('¿Seguro que deseas eliminar esta cita?')) return;
+        try {
+            const user = getUserTypeAndToken();
+            const res = await fetch(`${API_BASE}/citas/${citaId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + user.token }
+            });
+            if (res.ok) {
+                // Recargar dashboard para reflejar el cambio
+                const mainContent = document.getElementById('main-content');
+                renderDashboard(user, mainContent);
+            } else {
+                alert('No se pudo eliminar la cita.');
+            }
+        } catch (err) {
+            alert('Error de red al eliminar la cita.');
+        }
+    }
+});
 
 async function renderDashboard(user, mainContent) {
     let welcomeMsg = '';

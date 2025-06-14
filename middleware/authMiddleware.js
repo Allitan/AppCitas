@@ -4,22 +4,22 @@ const authenticateClient = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (authHeader) {
-        const token = authHeader.split(' ')[1]; // Bearer <token>
+        const token = authHeader.split(' ')[1];
 
         if (token) {
             jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
                 if (err) {
-                    return res.status(403).json({ error: 'Token inválido.' }); // 403 Forbidden
+                    return res.status(403).json({ error: 'Token inválido.' });
                 }
 
-                req.clientId = user.clientId; // Guardamos el ID del cliente en la request para usarlo en la ruta
-                next(); // Permitimos que la solicitud continúe a la siguiente middleware o ruta
+                req.clientId = user.clientId;
+                next();
             });
         } else {
-            res.status(401).json({ error: 'Token de autenticación no proporcionado.' }); // 401 Unauthorized
+            res.status(401).json({ error: 'Token de autenticación no proporcionado.' });
         }
     } else {
-        res.status(401).json({ error: 'Encabezado de autorización no encontrado.' }); // 401 Unauthorized
+        res.status(401).json({ error: 'Encabezado de autorización no encontrado.' });
     }
 };
 

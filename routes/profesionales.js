@@ -151,20 +151,20 @@ router.delete('/:profesionalId/servicios/:servicioId', authenticateProfesional, 
     // Obtener la disponibilidad de un profesional (con opción de filtrar por fecha en el futuro)
     router.get('/:profesionalId/disponibilidad', (req,res) =>{
         const profesionalId = req.params.profesionalId;
+        const authenticatedProfesionalId = req.profesionalId;
+        console.log('[DEBUG] profesionalId param:', profesionalId, '| authenticatedProfesionalId (token):', authenticatedProfesionalId);
         //const { fecha } = req.query; // Ejemplo de cómo podrías filtrar por fecha en el futuro
         let query = 'SELECT ID_Disponibilidad, Dia, HoraInicio, HoraFin FROM Disponibilidad WHERE ID_Profesional = ?';
         const values = [profesionalId];
-
         /*
         if (fecha) {
             query += ' AND Dia = DAYNAME(?) AND ? BETWEEN FechaInicio AND FechaFin'; // Ejemplo de filtro por fecha
             values.push(fecha, fecha);
         }
         */
-
         db.query(query, values, (err, results) =>{
             if(err){
-                console.error(`Error fetching disponibilidad for profesional ID ${profesionalId}:`, err);
+                console.error(`[DEBUG] Error fetching disponibilidad for profesional ID ${profesionalId}:`, err);
                 return res.status(500).json({error: 'Error al obtener la disponibilidad.'});
             }
             // Siempre retornar un array, aunque esté vacío
@@ -483,6 +483,39 @@ router.put('/:profesionalId', authenticateProfesional, async (req, res) => {
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'No se encontró el profesional.' });
         }
+        // Lógica: Si se actualizó la especialidad y el profesional no tiene servicios, crear uno automáticamente
+        if (Especialidad) {
+            // Verificar si el profesional ya tiene servicios asociados
+            const [servicios] = await db.promise().query(
+                'SELECT COUNT(*) AS total FROM ProfesionalServicio WHERE ID_Profesional = ?',
+                [profesionalId]
+            );
+            if (servicios[0].total === 0) {
+                // Crear servicio con nombre de la especialidad, duración 60 min, precio 60
+                let nuevoServicioId = null;
+                try {
+                    const [servicioRes] = await db.promise().query(
+                        'INSERT INTO Servicio (Nombre, Duración, Precio) VALUES (?, ?, ?)',
+                        [Especialidad, 60, 60]
+                    );
+                    nuevoServicioId = servicioRes.insertId;
+                } catch (e) {
+                    return res.status(500).json({ error: 'Error al crear el servicio automáticamente: ' + (e.message || e) });
+                }
+                if (nuevoServicioId) {
+                    try {
+                        await db.promise().query(
+                            'INSERT INTO ProfesionalServicio (ID_Profesional, ID_Servicio) VALUES (?, ?)',
+                            [profesionalId, nuevoServicioId]
+                        );
+                    } catch (e) {
+                        return res.status(500).json({ error: 'Error al asociar el servicio al profesional: ' + (e.message || e) });
+                    }
+                } else {
+                    return res.status(500).json({ error: 'No se pudo crear el servicio automáticamente.' });
+                }
+            }
+        }
         res.json({ message: 'Perfil actualizado exitosamente.' });
     } catch (err) {
         console.error('Error al actualizar el perfil del profesional:', err);
@@ -507,6 +540,30 @@ router.post('/asociar-servicio', (req, res) => {
         }
         res.status(201).json({ message: 'Servicio asociado al profesional exitosamente.' });
     });
+});
+
+// Eliminar perfil de profesional
+router.delete('/:profesionalId', authenticateProfesional, async (req, res) => {
+    const profesionalId = req.params.profesionalId;
+    const authenticatedProfesionalId = req.profesionalId;
+    if (String(profesionalId) !== String(authenticatedProfesionalId)) {
+        return res.status(403).json({ error: 'No tienes permiso para eliminar este perfil.' });
+    }
+    try {
+        // Eliminar primero las dependencias (servicios, disponibilidad, citas, etc.) si es necesario
+        await db.promise().query('DELETE FROM ProfesionalServicio WHERE ID_Profesional = ?', [profesionalId]);
+        await db.promise().query('DELETE FROM Disponibilidad WHERE ID_Profesional = ?', [profesionalId]);
+        await db.promise().query('DELETE FROM Cita WHERE ID_Profesional = ?', [profesionalId]);
+        // Finalmente, eliminar el profesional
+        const [result] = await db.promise().query('DELETE FROM Profesional WHERE ID_Profesional = ?', [profesionalId]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'No se encontró el profesional.' });
+        }
+        res.json({ message: 'Perfil de profesional eliminado exitosamente.' });
+    } catch (err) {
+        console.error('Error al eliminar el profesional:', err);
+        res.status(500).json({ error: 'Error al eliminar el perfil.' });
+    }
 });
 
 module.exports = router;

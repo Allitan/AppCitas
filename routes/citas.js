@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const { authenticateClient } = require('../middleware/authMiddleware');
 
 // Ruta para obtener una cita específica por su ID
 router.get('/:citaId', (req, res) => {
@@ -317,7 +318,6 @@ router.post('/', (req, res) => {
                                                 db.query('DELETE FROM Disponibilidad WHERE ID_Disponibilidad = ?', [disp.ID_Disponibilidad], resolve);
                                             }));
                                             Promise.all(queries).then(() => {
-                                                const newCitaId = citaResult.insertId;
                                                 return res.status(201).json({ id: newCitaId, message: 'Cita creada exitosamente.' });
                                             });
                                         }
@@ -333,8 +333,12 @@ router.post('/', (req, res) => {
 });
 
 // Ruta para obtener todas las citas de un cliente específico
-router.get('/clientes/:clienteId/citas', (req, res) => {
+router.get('/clientes/:clienteId/citas', authenticateClient, (req, res) => {
     const clienteId = req.params.clienteId;
+    // Solo permitir que el cliente autenticado vea sus propias citas
+    if (parseInt(clienteId) !== req.clientId) {
+        return res.status(403).json({ error: 'No tienes permiso para ver estas citas.' });
+    }
     const query = `
         SELECT c.ID_Cita, c.ID_Profesional, c.ID_Servicio, c.Fecha, c.Hora, c.Estado,
                p.Nombre AS NombreProfesional, p.Especialidad AS EspecialidadProfesional

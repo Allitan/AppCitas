@@ -65,9 +65,20 @@ document.addEventListener('click', async function(e) {
                 headers: { 'Authorization': 'Bearer ' + user.token }
             });
             if (res.ok) {
-                // Recargar dashboard para reflejar el cambio
-                const mainContent = document.getElementById('main-content');
-                renderDashboard(user, mainContent);
+                // Buscar el <li> de la cita y reemplazarlo por un mensaje
+                const citaLi = e.target.closest('li.list-group-item');
+                if (citaLi) {
+                    citaLi.innerHTML = `<div class='alert alert-warning w-100 mb-0 text-center'><i class='bi bi-x-circle'></i> Cita cancelada</div>`;
+                    setTimeout(() => {
+                        citaLi.remove();
+                        // Si ya no hay citas, recargar dashboard para mostrar mensaje vacío
+                        const ul = document.querySelector('.list-group');
+                        if (ul && ul.children.length === 0) {
+                            const mainContent = document.getElementById('main-content');
+                            renderDashboard(user, mainContent);
+                        }
+                    }, 1500);
+                }
             } else {
                 alert('No se pudo eliminar la cita.');
             }
@@ -196,64 +207,57 @@ async function renderProfile(user, mainContent) {
 }
 
 function renderProfileView(type, data, editing) {
-    if (!editing) {
-        if (type === 'profesional' || type === 'cliente') {
-            return `
-            <div class="card profile-card mx-auto shadow">
-                <div class="card-body text-center">
-                    <div class="mb-3">
-                        <i class="bi bi-person-circle" style="font-size: 4rem; color: #2575fc;"></i>
-                    </div>
-                    <h4 class="card-title mb-2">${data.Nombre || ''}</h4>
-                    <div class="mb-2 text-muted">${type === 'profesional' ? 'Profesional' : 'Cliente'}</div>
-                    <div class="mb-2"><b>Email:</b> ${data.Email || ''}</div>
-                    ${type === 'profesional' ? `<div class="mb-2"><b>Especialidad:</b> ${data.Especialidad || ''}</div>` : ''}
-                    <div class="mb-2"><b>Teléfono:</b> ${data.Teléfono || ''}</div>
-                    <button class='btn btn-primary mt-3' id='edit-profile-btn'>Editar</button>
+    let formHtml = '';
+    if (type === 'profesional') {
+        formHtml = `
+            <form id='profile-form'>
+                <div class='mb-2'><label>Nombre</label><input class='form-control' name='Nombre' value='${data.Nombre || ''}' required></div>
+                <div class='mb-2'><label>Email</label><input class='form-control' name='Email' value='${data.Email || ''}' required></div>
+                <div class='mb-2'><label>Especialidad</label><input class='form-control' name='Especialidad' value='${data.Especialidad || ''}'></div>
+                <div class='mb-2'><label>Teléfono</label><input class='form-control' name='Teléfono' value='${data.Teléfono || ''}'></div>
+                <div class='d-flex justify-content-between'>
+                    <button class='btn btn-success mt-2' type='submit'>Guardar</button>
+                    <button class='btn btn-secondary mt-2 ms-2' type='button' id='cancel-edit-btn'>Cancelar</button>
                 </div>
-            </div>
-            `;
-        }
+                <div id='profile-msg' class='mt-2'></div>
+            </form>
+        `;
     } else {
-        if (type === 'profesional') {
-            return `
-            <div class="card profile-card mx-auto shadow">
-                <div class="card-body">
-                    <h4 class="card-title mb-3 text-center">Editar Perfil Profesional</h4>
-                    <form id='profile-form'>
-                        <div class='mb-2'><label>Nombre</label><input class='form-control' name='Nombre' value='${data.Nombre || ''}' required></div>
-                        <div class='mb-2'><label>Email</label><input class='form-control' name='Email' value='${data.Email || ''}' required></div>
-                        <div class='mb-2'><label>Especialidad</label><input class='form-control' name='Especialidad' value='${data.Especialidad || ''}'></div>
-                        <div class='mb-2'><label>Teléfono</label><input class='form-control' name='Teléfono' value='${data.Teléfono || ''}'></div>
-                        <div class='d-flex justify-content-between'>
-                            <button class='btn btn-success mt-2' type='submit'>Guardar</button>
-                            <button class='btn btn-secondary mt-2 ms-2' type='button' id='cancel-edit-btn'>Cancelar</button>
-                        </div>
-                        <div id='profile-msg' class='mt-2'></div>
-                    </form>
+        formHtml = `
+            <form id='profile-form'>
+                <div class='mb-2'><label>Nombre</label><input class='form-control' name='Nombre' value='${data.Nombre || ''}' required></div>
+                <div class='mb-2'><label>Email</label><input class='form-control' name='Email' value='${data.Email || ''}' required></div>
+                <div class='mb-2'><label>Teléfono</label><input class='form-control' name='Teléfono' value='${data.Teléfono || ''}'></div>
+                <div class='d-flex justify-content-between'>
+                    <button class='btn btn-success mt-2' type='submit'>Guardar</button>
+                    <button class='btn btn-secondary mt-2 ms-2' type='button' id='cancel-edit-btn'>Cancelar</button>
                 </div>
-            </div>
-            `;
-        } else {
-            return `
-            <div class="card profile-card mx-auto shadow">
-                <div class="card-body">
-                    <h4 class="card-title mb-3 text-center">Editar Perfil Cliente</h4>
-                    <form id='profile-form'>
-                        <div class='mb-2'><label>Nombre</label><input class='form-control' name='Nombre' value='${data.Nombre || ''}' required></div>
-                        <div class='mb-2'><label>Email</label><input class='form-control' name='Email' value='${data.Email || ''}' required></div>
-                        <div class='mb-2'><label>Teléfono</label><input class='form-control' name='Teléfono' value='${data.Teléfono || ''}'></div>
-                        <div class='d-flex justify-content-between'>
-                            <button class='btn btn-success mt-2' type='submit'>Guardar</button>
-                            <button class='btn btn-secondary mt-2 ms-2' type='button' id='cancel-edit-btn'>Cancelar</button>
-                        </div>
-                        <div id='profile-msg' class='mt-2'></div>
-                    </form>
-                </div>
-            </div>
-            `;
-        }
+                <div id='profile-msg' class='mt-2'></div>
+            </form>
+        `;
     }
+    let deleteBtn = '';
+    if (!editing) {
+        deleteBtn = `<button class="btn btn-outline-danger w-100 mt-3" id="delete-profile-btn" style="font-weight:bold;letter-spacing:1px;"><i class="bi bi-trash"></i> Eliminar perfil</button>`;
+    }
+    // Avatar e info ordenada
+    return `
+        <div class="card profile-card mx-auto shadow" style="max-width:400px;">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(data.Nombre || 'Usuario')}&background=2575fc&color=fff&size=128" class="rounded-circle shadow" alt="avatar" style="width:96px;height:96px;object-fit:cover;">
+                </div>
+                <h4 class="card-title mb-2">${data.Nombre || ''}</h4>
+                <div class="mb-2 text-muted">${data.Email || ''}</div>
+                ${type === 'profesional' ? `<div class="mb-2"><b>Especialidad:</b> ${data.Especialidad || ''}</div>` : ''}
+                <div class="mb-2"><b>Teléfono:</b> ${data.Teléfono || ''}</div>
+                ${editing ? formHtml : ''}
+                ${!editing ? `<button class="btn btn-primary w-100 mb-2" id="edit-profile-btn">Editar</button>` : ''}
+                ${deleteBtn}
+                <div id="profile-msg" class="mt-2"></div>
+            </div>
+        </div>
+    `;
 }
 
 function attachProfileFormHandler(user, mainContent, data) {
@@ -318,17 +322,46 @@ async function renderDisponibilidad(user, mainContent) {
     let userId = '';
     let dispHtml = '';
     let data = {};
+    let lista = [];
     try {
         const payload = parseJwt(user.token);
         userId = payload.profesionalId;
-        // Obtener disponibilidad actual
-        const res = await fetch(`${API_BASE}/profesionales/${userId}/disponibilidad`, {
-            headers: { 'Authorization': 'Bearer ' + user.token }
-        });
-        let lista = [];
-        if (res.ok) {
-            const result = await res.json();
-            lista = Array.isArray(result) ? result : (result.data || []);
+        // 1. Verificar si el profesional tiene servicios asociados
+        let servicios = [];
+        try {
+            const resServ = await fetch(`${API_BASE}/profesionales/${userId}/servicios`, {
+                headers: { 'Authorization': 'Bearer ' + user.token }
+            });
+            if (resServ.ok) {
+                const resultServ = await resServ.json();
+                servicios = Array.isArray(resultServ) ? resultServ : (resultServ.data || []);
+            }
+        } catch (e) {}
+        // 1.5. Obtener la disponibilidad del profesional
+        try {
+            const resDisp = await fetch(`${API_BASE}/profesionales/${userId}/disponibilidad`, {
+                headers: { 'Authorization': 'Bearer ' + user.token }
+            });
+            if (resDisp.ok) {
+                const resultDisp = await resDisp.json();
+                lista = Array.isArray(resultDisp) ? resultDisp : (resultDisp.data || []);
+            } else {
+                lista = [];
+            }
+        } catch (e) {
+            lista = [];
+        }
+        // 2. Si no tiene servicios, mostrar inputs para precio y duración
+        let extraFields = '';
+        if (!servicios || servicios.length === 0) {
+            extraFields = `
+                <div class="col-6 col-md-3">
+                    <input type="number" class="form-control" name="precioServicio" min="0" step="0.01" required placeholder="Precio ($)">
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="number" class="form-control" name="duracionServicio" min="1" max="480" required placeholder="Duración (min)">
+                </div>
+            `;
         }
         dispHtml = `
             <div class="card profile-card mx-auto shadow">
@@ -338,7 +371,7 @@ async function renderDisponibilidad(user, mainContent) {
                     <form id="disponibilidad-form" class="row g-2 justify-content-center mb-4">
                         <div class="col-12 col-md-4">
                             <select class="form-select" name="dia" required>
-                                <option value="">Día</option>
+                                <option value="" selected>Día</option>
                                 <option value="Lunes">Lunes</option>
                                 <option value="Martes">Martes</option>
                                 <option value="Miércoles">Miércoles</option>
@@ -354,6 +387,7 @@ async function renderDisponibilidad(user, mainContent) {
                         <div class="col-6 col-md-3">
                             <input type="time" class="form-control" name="horaFin" required placeholder="Fin">
                         </div>
+                        ${extraFields}
                         <div class="col-12 mt-2">
                             <button type="submit" class="btn btn-success w-100">Agregar</button>
                         </div>
@@ -362,23 +396,26 @@ async function renderDisponibilidad(user, mainContent) {
                     <h5 class="mb-3">Horarios Registrados</h5>
                     <ul class="list-group" id="disponibilidad-list">
                     ${lista.length === 0 ? '<li class="list-group-item text-muted">No hay disponibilidad registrada.</li>' :
-                    lista.map(d => `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                    <b>${d.Dia}</b>: ${d.HoraInicio} - ${d.HoraFin}
-                    </div>
-                    <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch mt-2 mt-md-0">
-                        <button class="btn btn-sm btn-outline-primary btn-actualizar-disp" 
-                            data-id="${d.ID_Disponibilidad}"
-                            data-dia="${d.Dia}"
-                            data-horainicio="${d.HoraInicio}"
-                            data-horafin="${d.HoraFin}">
-                            <i class="bi bi-pencil"></i> Actualizar
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger btn-eliminar-disp" data-id="${d.ID_Disponibilidad}"><i class="bi bi-trash"></i> Eliminar</button>
-                    </div>
-                    </li>
-                    `).join('')}
+                    lista.map(d => {
+                        const fechaProxima = getNextDateOfWeek(d.Dia);
+                        return `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                        <b>${d.Dia}</b> <span class="badge bg-light text-dark border">${fechaProxima}</span>: ${d.HoraInicio} - ${d.HoraFin}
+                        </div>
+                        <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch mt-2 mt-md-0">
+                            <button class="btn btn-sm btn-outline-primary btn-actualizar-disp" 
+                                data-id="${d.ID_Disponibilidad}"
+                                data-dia="${d.Dia}"
+                                data-horainicio="${d.HoraInicio}"
+                                data-horafin="${d.HoraFin}">
+                                <i class="bi bi-pencil"></i> Actualizar
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger btn-eliminar-disp" data-id="${d.ID_Disponibilidad}"><i class="bi bi-trash"></i> Eliminar</button>
+                        </div>
+                        </li>
+                        `;
+                    }).join('')}
                     </ul>
                 </div>
             </div>
@@ -393,9 +430,14 @@ async function renderDisponibilidad(user, mainContent) {
         dispForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('disponibilidad-msg');
+            const formData = new FormData(dispForm);
+            if (!formData.get('dia')) {
+                msg.textContent = 'Por favor, selecciona un día.';
+                msg.className = 'text-danger';
+                return;
+            }
             msg.textContent = 'Enviando...';
             msg.className = '';
-            const formData = new FormData(dispForm);
             const body = {};
             // Traducción de día español a inglés para guardar en la base de datos
             const diasMap = {
@@ -415,6 +457,52 @@ async function renderDisponibilidad(user, mainContent) {
                 }
             }
             const profesionalId = parseJwt(user.token).profesionalId;
+            // Si no hay servicios, crear uno automáticamente con los datos ingresados
+            let servicios = [];
+            try {
+                const resServ = await fetch(`${API_BASE}/profesionales/${profesionalId}/servicios`, {
+                    headers: { 'Authorization': 'Bearer ' + user.token }
+                });
+                if (resServ.ok) {
+                    const resultServ = await resServ.json();
+                    servicios = Array.isArray(resultServ) ? resultServ : (resultServ.data || []);
+                }
+            } catch (e) {}
+            if (!servicios || servicios.length === 0) {
+                // Crear servicio con los datos del formulario
+                const nombreServicio = 'Servicio de ' + (user.Nombre || 'Especialidad');
+                const duracion = formData.get('duracionServicio') || 60;
+                const precio = formData.get('precioServicio') || 60;
+                let servicioId = null;
+                try {
+                    const resServicio = await fetch(`${API_BASE}/servicios`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + user.token
+                        },
+                        body: JSON.stringify({ Nombre: nombreServicio, Duración: duracion, Precio: precio })
+                    });
+                    if (resServicio.ok) {
+                        const nuevoServicio = await resServicio.json();
+                        servicioId = nuevoServicio.ID_Servicio || nuevoServicio.id;
+                    }
+                } catch (e) {}
+                // Asociar el servicio al profesional
+                if (servicioId) {
+                    try {
+                        await fetch(`${API_BASE}/profesionales/${profesionalId}/servicios`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + user.token
+                            },
+                            body: JSON.stringify({ servicioId })
+                        });
+                    } catch (e) {}
+                }
+            }
+            // Ahora sí, crear la disponibilidad
             try {
                 const res = await fetch(`${API_BASE}/profesionales/${profesionalId}/disponibilidad`, {
                     method: 'POST',
@@ -470,9 +558,14 @@ async function renderDisponibilidad(user, mainContent) {
             const li = btn.closest('li');
             const infoDiv = li.querySelector('div');
             // Extraer datos actuales de los atributos data-
-            const dia = btn.getAttribute('data-dia');
+            let dia = btn.getAttribute('data-dia');
             const horaInicio = btn.getAttribute('data-horainicio');
             const horaFin = btn.getAttribute('data-horafin');
+            // Si el día está en inglés, traducirlo a español para el select
+            const diasMapEn = {
+                'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles', 'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+            };
+            if (diasMapEn[dia]) dia = diasMapEn[dia];
             // Reemplazar contenido por formulario de edición
             infoDiv.innerHTML = `
                 <form class="d-flex flex-wrap align-items-center w-100 update-disp-form">
@@ -537,6 +630,18 @@ async function renderDisponibilidad(user, mainContent) {
             });
         });
     });
+}
+
+// Utilidad para calcular la próxima fecha de un día de la semana desde hoy
+function getNextDateOfWeek(dayName) {
+    const diasSemanaEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const today = new Date();
+    const todayIdx = today.getDay();
+    const targetIdx = diasSemanaEn.indexOf(dayName);
+    let daysToAdd = (targetIdx - todayIdx + 7) % 7;
+    if (daysToAdd === 0) daysToAdd = 7;
+    const nextDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysToAdd);
+    return nextDate.toISOString().split('T')[0];
 }
 
 function parseJwt(token) {
@@ -746,17 +851,21 @@ async function renderProfesionales(user, mainContent) {
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm align-middle mb-2">
                             <thead class="table-light">
-                                <tr><th>Día</th><th>Hora inicio</th><th>Hora fin</th><th></th></tr>
+                                <tr><th>Día</th><th>Fecha exacta</th><th>Hora inicio</th><th>Hora fin</th><th></th></tr>
                             </thead>
                             <tbody>
-                                ${disponibilidadFiltrada.map((d, idx) => `
-                                    <tr>
-                                        <td>${diasMapEnEs[d.Dia] || d.Dia}</td>
-                                        <td>${d.HoraInicio}</td>
-                                        <td>${d.HoraFin}</td>
-                                        <td><button class="btn btn-success btn-sm btn-agendar-horario" data-idx="${idx}">Agendar</button></td>
-                                    </tr>
-                                `).join('')}
+                                ${disponibilidadFiltrada.map((d, idx) => {
+                                    const fechaProxima = getNextDateOfWeek(d.Dia);
+                                    return `
+                                        <tr>
+                                            <td>${diasMapEnEs[d.Dia] || d.Dia}</td>
+                                            <td><span class="badge bg-light text-dark border">${fechaProxima}</span></td>
+                                            <td>${d.HoraInicio}</td>
+                                            <td>${d.HoraFin}</td>
+                                            <td><button class="btn btn-success btn-sm btn-agendar-horario" data-idx="${idx}">Agendar</button></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -863,3 +972,38 @@ function setActiveNav(section) {
         document.getElementById('nav-profile').classList.add('active');
     }
 }
+
+document.addEventListener('click', async function(e) {
+    if (e.target && e.target.id === 'delete-profile-btn') {
+        if (!confirm('¿Seguro que deseas eliminar tu perfil? Esta acción no se puede deshacer.')) return;
+        const user = getUserTypeAndToken();
+        if (!user) return;
+        let endpoint = '';
+        let id = '';
+        let token = user.token;
+        if (user.type === 'cliente') {
+            const payload = parseJwt(token);
+            id = payload.clientId;
+            endpoint = `${API_BASE}/clientes/${id}`;
+        } else if (user.type === 'profesional') {
+            const payload = parseJwt(token);
+            id = payload.profesionalId;
+            endpoint = `${API_BASE}/profesionales/${id}`;
+        }
+        try {
+            const res = await fetch(endpoint, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                alert('Perfil eliminado exitosamente.');
+                logout();
+            } else {
+                const result = await res.json();
+                alert(result.error || result.message || 'No se pudo eliminar el perfil.');
+            }
+        } catch (err) {
+            alert('Error de red al eliminar el perfil.');
+        }
+    }
+});

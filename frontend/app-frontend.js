@@ -897,11 +897,11 @@ async function renderProfesionales(user, mainContent) {
                         let diasParaProximo = (diaTarget - hoyIdx + 7) % 7;
                         if (diasParaProximo === 0) diasParaProximo = 7; // Siempre el próximo, no hoy
                         // DEBUG: mostrar en consola el cálculo de fecha
-                        console.log('Hoy:', hoy.toISOString().split('T')[0], 'getDay:', hoyIdx, 'Target:', horario.Dia, 'TargetIdx:', diaTarget, 'diasParaProximo:', diasParaProximo);
+                        // console.log('Hoy:', hoy.toISOString().split('T')[0], 'getDay:', hoyIdx, 'Target:', horario.Dia, 'TargetIdx:', diaTarget, 'diasParaProximo:', diasParaProximo);
                         const fechaCita = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + diasParaProximo);
                         const fechaStr = fechaCita.toISOString().split('T')[0];
                         // DEBUG: mostrar en consola la fecha que se enviará
-                        console.log('Agendando para:', fechaStr, 'Hora:', horario.HoraInicio);
+                        // console.log('Agendando para:', fechaStr, 'Hora:', horario.HoraInicio);
                         panel.innerHTML = '<div class="text-muted">Agendando cita...</div>';
                         try {
                             const payload = parseJwt(user.token);

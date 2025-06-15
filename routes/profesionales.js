@@ -152,7 +152,7 @@ router.delete('/:profesionalId/servicios/:servicioId', authenticateProfesional, 
     router.get('/:profesionalId/disponibilidad', (req,res) =>{
         const profesionalId = req.params.profesionalId;
         const authenticatedProfesionalId = req.profesionalId;
-        console.log('[DEBUG] profesionalId param:', profesionalId, '| authenticatedProfesionalId (token):', authenticatedProfesionalId);
+        // console.log('[DEBUG] profesionalId param:', profesionalId, '| authenticatedProfesionalId (token):', authenticatedProfesionalId);
         //const { fecha } = req.query; // Ejemplo de cómo podrías filtrar por fecha en el futuro
         let query = 'SELECT ID_Disponibilidad, Dia, HoraInicio, HoraFin FROM Disponibilidad WHERE ID_Profesional = ?';
         const values = [profesionalId];

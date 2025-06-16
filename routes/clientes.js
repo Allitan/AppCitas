@@ -168,7 +168,7 @@ router.post('/login', async (req, res) => {
         const [results] = await db.promise().query(query, [Email]);
 
         if (results.length === 0) {
-            return res.status(401).json({ error: 'Credenciales inválidas.' }); // 401 Unauthorized
+            return res.status(401).json({ error: 'Credenciales inválidas.' });
         }
 
         const client = results[0];

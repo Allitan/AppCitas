@@ -89,6 +89,18 @@
                                 <label for="prof-reg-password" class="form-label">Contraseña</label>
                                 <input type="password" class="form-control" id="prof-reg-password" required>
                             </div>
+                            <div class="mb-3">
+                                <label for="prof-reg-duracion" class="form-label">Duración del servicio (minutos)</label>
+                                <input type="number" class="form-control" id="prof-reg-duracion" min="1" max="480" required placeholder="Ej: 60">
+                            </div>
+                            <div class="mb-3">
+                                <label for="prof-reg-precio" class="form-label">Precio del servicio ($)</label>
+                                <input type="number" class="form-control" id="prof-reg-precio" min="0" step="0.01" required placeholder="Ej: 60">
+                            </div>
+                            <div class="mb-3">
+                                <label for="prof-reg-especialidad" class="form-label">Especialidad</label>
+                                <input type="text" class="form-control" id="prof-reg-especialidad" required placeholder="Ej: Psicología, Nutrición, etc.">
+                            </div>
                             <button type="submit" class="btn btn-primary w-100">Registrarse</button>
                             <div id="prof-reg-msg" class="mt-2"></div>
                         </form>

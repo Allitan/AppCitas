@@ -113,19 +113,17 @@ router.put('/:citaId', (req, res) => {
 // Ruta para eliminar una cita específica por su ID
 router.delete('/:citaId', (req, res) => {
     const citaId = req.params.citaId;
-    const query = 'DELETE FROM Cita WHERE ID_Cita = ?';
-
-    db.query(query, [citaId], (err, result) => {
+    // Cambiar el estado a 'Cancelada' en vez de eliminar
+    const query = 'UPDATE Cita SET Estado = ? WHERE ID_Cita = ?';
+    db.query(query, ['Cancelada', citaId], (err, result) => {
         if (err) {
-            console.error(`Error deleting cita with ID ${citaId}:`, err);
-            return res.status(500).json({ error: 'Error al eliminar la cita.' });
+            console.error(`Error cancelando cita con ID ${citaId}:`, err);
+            return res.status(500).json({ error: 'Error al cancelar la cita.' });
         }
-
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: `No se encontró la cita con ID ${citaId}.` });
         }
-
-        res.json({ message: 'Cita eliminada exitosamente.' });
+        res.json({ message: 'Cita cancelada exitosamente.' });
     });
 });
 
@@ -213,6 +211,7 @@ router.post('/', (req, res) => {
                         JOIN Servicio s ON c.ID_Servicio = s.ID_Servicio
                         WHERE c.ID_Profesional = ?
                           AND c.Fecha = ?
+                          AND c.Estado != 'Cancelada'
                           AND (
                             TIME(?) < ADDTIME(c.Hora, s.Duración) AND
                             ADDTIME(TIME(?), ?) > c.Hora

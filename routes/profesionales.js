@@ -287,259 +287,64 @@ router.delete('/:profesionalId/servicios/:servicioId', authenticateProfesional, 
         });
     });
 
-    // Ruta para crear un nuevo profesional
-    router.post('/', (req, res) => {
-        const { Nombre, Especialidad, Email, Contrasenia } = req.body;
-
-        if (!Nombre || !Especialidad || !Email || !Contrasenia) {
-            return res.status(400).json({ error: 'Por favor, proporciona el nombre, la especialidad, el email y la contraseña del profesional.' });
-        }
-
-        const query = 'INSERT INTO Profesional (Nombre, Email, Contraseña, Especialidad) VALUES (?, ?, ?, ?)';
-        db.query(query, [Nombre, Email, Contrasenia, Especialidad], (err, results) => {
-            if (err) {
-                console.error('Error creating profesional:', err);
-                return res.status(500).json({ error: 'Error al crear el profesional.' });
-            }
-
-            const newProfesionalId = results.insertId;
-            res.status(201).json({ id: newProfesionalId, message: 'Profesional creado exitosamente.' });
-        });
-    });
-
-
-    // Ruta para actualizar un horario de disponibilidad específico de un profesional
-    router.put('/:profesionalId/disponibilidad/:disponibilidadId', authenticateProfesional, (req, res) => {
-        const profesionalId = req.params.profesionalId;
-        const disponibilidadId = req.params.disponibilidadId;
-        const { dia, horaInicio, horaFin } = req.body;
-
-        if (!dia && !horaInicio && !horaFin) {
-            return res.status(400).json({ error: 'Por favor, proporciona al menos un campo (dia, horaInicio, horaFin) para actualizar la disponibilidad.' });
-        }
-
-        const updates = [];
-        const values = [];
-
-        if (dia) {
-            updates.push('Dia = ?');
-            values.push(dia);
-        }
-        if (horaInicio) {
-            const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-            if (!timeRegex.test(horaInicio)) {
-                return res.status(400).json({ error: 'El formato de hora de inicio debe ser HH:MM (ej. 09:00, 18:30).' });
-            }
-            updates.push('HoraInicio = ?');
-            values.push(horaInicio);
-        }
-        if (horaFin) {
-            const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-            if (!timeRegex.test(horaFin)) {
-                return res.status(400).json({ error: 'El formato de hora de fin debe ser HH:MM (ej. 09:00, 18:30).' });
-            }
-            updates.push('HoraFin = ?');
-            values.push(horaFin);
-        }
-
-        const query = `UPDATE Disponibilidad SET ${updates.join(', ')} WHERE ID_Disponibilidad = ? AND ID_Profesional = ?`;
-        values.push(disponibilidadId, profesionalId);
-
-        db.query(query, values, (err, result) => {
-            if (err) {
-                console.error(`Error updating disponibilidad ${disponibilidadId} for profesional ${profesionalId}:`, err);
-                return res.status(500).json({ error: 'Error al actualizar la disponibilidad.' });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ message: `No se encontró la disponibilidad con ID ${disponibilidadId} para el profesional con ID ${profesionalId}.` });
-            }
-
-            res.json({ message: 'Disponibilidad actualizada exitosamente.' });
-        });
-    });
-
-    // Ruta para eliminar un horario de disponibilidad específico de un profesional
-    router.delete('/:profesionalId/disponibilidad/:disponibilidadId', authenticateProfesional,(req, res) => {
-        const profesionalId = req.params.profesionalId;
-        const disponibilidadId = req.params.disponibilidadId;
-        const query = 'DELETE FROM Disponibilidad WHERE ID_Disponibilidad = ? AND ID_Profesional = ?';
-
-        db.query(query, [disponibilidadId, profesionalId], (err, result) => {
-            if (err) {
-                console.error(`Error deleting disponibilidad ${disponibilidadId} for profesional ${profesionalId}:`, err);
-                return res.status(500).json({ error: 'Error al eliminar la disponibilidad.' });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ message: `No se encontró la disponibilidad con ID ${disponibilidadId} para el profesional con ID ${profesionalId}.` });
-            }
-
-            res.json({ message: 'Disponibilidad eliminada exitosamente.' });
-        });
-    });
-
-    // Ruta para registrar un nuevo profesional
-    router.post('/registro', async (req, res) => {
-        const { Nombre, Email, Contraseña, Teléfono } = req.body;
-
-        // Validar que todos los campos obligatorios estén presentes
-        if (!Nombre || !Email || !Contraseña) {
-            return res.status(400).json({ error: 'Por favor, proporciona nombre, email y contraseña.' });
-        }
-
-        try {
-            // Verificar si el email ya existe
-            const emailCheckQuery = 'SELECT ID_Profesional FROM Profesional WHERE Email = ?';
-            const [existingProfesional] = await db.promise().query(emailCheckQuery, [Email]);
-
-            if (existingProfesional.length > 0) {
-                return res.status(409).json({ error: 'El email ya está registrado.' });
-            }
-
-            // Hashear la contraseña
-            const saltRounds = 10;
-            const hashedPassword = await bcrypt.hash(Contraseña, saltRounds);
-
-            // Insertar el nuevo profesional en la base de datos
-            const insertQuery = 'INSERT INTO Profesional (Nombre, Email, Contraseña, Teléfono) VALUES (?, ?, ?, ?)';
-            const [result] = await db.promise().query(insertQuery, [Nombre, Email, hashedPassword, Teléfono]);
-
-            res.status(201).json({ message: 'Profesional registrado exitosamente.', profesionalId: result.insertId });
-
-        } catch (error) {
-            console.error('Error al registrar el profesional:', error);
-            return res.status(500).json({ error: 'Error interno del servidor al registrar el profesional.' });
-        }
-    });
-
-    // Ruta para el login de profesional
-    router.post('/login', async (req, res) => {
-        const { Email, Contraseña } = req.body;
-
-        if (!Email || !Contraseña) {
-            return res.status(400).json({ error: 'Por favor, proporciona email y contraseña.' });
-        }
-
-        try {
-            // Buscar al profesional por su email
-            const query = 'SELECT ID_Profesional, Contraseña FROM Profesional WHERE Email = ?';
-            const [results] = await db.promise().query(query, [Email]);
-
-            if (results.length === 0) {
-                return res.status(401).json({ error: 'Credenciales inválidas.' }); // 401 Unauthorized
-            }
-
-            const profesional = results[0];
-
-            // Comparar la contraseña proporcionada con la contraseña hasheada
-            const passwordMatch = await bcrypt.compare(Contraseña, profesional.Contraseña);
-
-            if (!passwordMatch) {
-                return res.status(401).json({ error: 'Credenciales inválidas.' });
-            }
-
-            // Generar un token JWT
-            const token = jwt.sign(
-                { profesionalId: profesional.ID_Profesional }, // Payload para profesionales
-                process.env.JWT_SECRET || 'your-secret-key', // ¡Usa una variable de entorno para el secreto!
-                { expiresIn: '1h' }
-            );
-
-            res.json({ message: 'Login exitoso.', token: token, profesionalId: profesional.ID_Profesional });
-
-        } catch (error) {
-            console.error('Error al iniciar sesión del profesional:', error);
-            return res.status(500).json({ error: 'Error interno del servidor al iniciar sesión del profesional.' });
-        }
-    });
-
-// Actualizar perfil de un profesional
-router.put('/:profesionalId', authenticateProfesional, async (req, res) => {
-    const profesionalId = req.params.profesionalId;
-    const authenticatedProfesionalId = req.profesionalId;
-    const { Nombre, Email, Especialidad, Teléfono } = req.body;
-
-    if (String(profesionalId) !== String(authenticatedProfesionalId)) {
-        return res.status(403).json({ error: 'No tienes permiso para actualizar este perfil.' });
+    // Registro de profesional (asegura compatibilidad con frontend)
+router.post('/registro', async (req, res) => {
+    const { Nombre, Especialidad, Email, Teléfono, Contraseña, Duración, Precio } = req.body;
+    if (!Nombre || !Especialidad || !Email || !Contraseña || !Duración || !Precio) {
+        return res.status(400).json({ error: 'Por favor, proporciona nombre, especialidad, email, contraseña, duración y precio.' });
     }
-
-    if (!Nombre && !Email && !Especialidad && !Teléfono) {
-        return res.status(400).json({ error: 'Proporciona al menos un campo para actualizar.' });
-    }
-
-    const updates = [];
-    const values = [];
-    if (Nombre) { updates.push('Nombre = ?'); values.push(Nombre); }
-    if (Email) { updates.push('Email = ?'); values.push(Email); }
-    if (Especialidad) { updates.push('Especialidad = ?'); values.push(Especialidad); }
-    if (Teléfono) { updates.push('Teléfono = ?'); values.push(Teléfono); }
-
-    const query = `UPDATE Profesional SET ${updates.join(', ')} WHERE ID_Profesional = ?`;
-    values.push(profesionalId);
-
     try {
-        const [result] = await db.promise().query(query, values);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'No se encontró el profesional.' });
-        }
-        // Lógica: Si se actualizó la especialidad y el profesional no tiene servicios, crear uno automáticamente
-        if (Especialidad) {
-            // Verificar si el profesional ya tiene servicios asociados
-            const [servicios] = await db.promise().query(
-                'SELECT COUNT(*) AS total FROM ProfesionalServicio WHERE ID_Profesional = ?',
-                [profesionalId]
-            );
-            if (servicios[0].total === 0) {
-                // Crear servicio con nombre de la especialidad, duración 60 min, precio 60
-                let nuevoServicioId = null;
-                try {
-                    const [servicioRes] = await db.promise().query(
-                        'INSERT INTO Servicio (Nombre, Duración, Precio) VALUES (?, ?, ?)',
-                        [Especialidad, 60, 60]
-                    );
-                    nuevoServicioId = servicioRes.insertId;
-                } catch (e) {
-                    return res.status(500).json({ error: 'Error al crear el servicio automáticamente: ' + (e.message || e) });
-                }
-                if (nuevoServicioId) {
-                    try {
-                        await db.promise().query(
-                            'INSERT INTO ProfesionalServicio (ID_Profesional, ID_Servicio) VALUES (?, ?)',
-                            [profesionalId, nuevoServicioId]
-                        );
-                    } catch (e) {
-                        return res.status(500).json({ error: 'Error al asociar el servicio al profesional: ' + (e.message || e) });
-                    }
-                } else {
-                    return res.status(500).json({ error: 'No se pudo crear el servicio automáticamente.' });
-                }
-            }
-        }
-        res.json({ message: 'Perfil actualizado exitosamente.' });
+        // Hashear la contraseña
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(Contraseña, saltRounds);
+        // Insertar el profesional
+        const insertQuery = 'INSERT INTO Profesional (Nombre, Email, Contraseña, Teléfono, Especialidad) VALUES (?, ?, ?, ?, ?)';
+        const [result] = await db.promise().query(insertQuery, [Nombre, Email, hashedPassword, Teléfono, Especialidad]);
+        const newProfesionalId = result.insertId;
+        // Crear servicio automáticamente
+        const servicioQuery = 'INSERT INTO Servicio (Nombre, Duración, Precio) VALUES (?, ?, ?)';
+        const [servicioResult] = await db.promise().query(servicioQuery, [Especialidad, Duración, Precio]);
+        const newServicioId = servicioResult.insertId;
+        // Asociar el servicio al profesional
+        const asociaQuery = 'INSERT INTO ProfesionalServicio (ID_Profesional, ID_Servicio) VALUES (?, ?)';
+        await db.promise().query(asociaQuery, [newProfesionalId, newServicioId]);
+        res.status(201).json({ id: newProfesionalId, message: 'Profesional y servicio creados exitosamente.' });
     } catch (err) {
-        console.error('Error al actualizar el perfil del profesional:', err);
-        res.status(500).json({ error: 'Error al actualizar el perfil.' });
+        console.error('Error en el registro de profesional:', err);
+        res.status(500).json({ error: 'Error al registrar el profesional.' });
     }
 });
 
-// Ruta para asociar un servicio a un profesional (ADMIN o profesional)
-router.post('/asociar-servicio', (req, res) => {
-    const { ID_Profesional, ID_Servicio } = req.body;
-    if (!ID_Profesional || !ID_Servicio) {
-        return res.status(400).json({ error: 'Por favor, proporciona ID_Profesional y ID_Servicio.' });
+// Login de profesional
+router.post('/login', async (req, res) => {
+    const { Email, Contraseña } = req.body;
+    if (!Email || !Contraseña) {
+        return res.status(400).json({ error: 'Por favor, proporciona email y contraseña.' });
     }
-    const query = 'INSERT INTO ProfesionalServicio (ID_Profesional, ID_Servicio) VALUES (?, ?)';
-    db.query(query, [ID_Profesional, ID_Servicio], (err, result) => {
-        if (err) {
-            if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(409).json({ error: 'El servicio ya está asociado a este profesional.' });
-            }
-            console.error('Error al asociar servicio al profesional:', err);
-            return res.status(500).json({ error: 'Error al asociar el servicio al profesional.' });
+    try {
+        // Buscar al profesional por su email
+        const query = 'SELECT ID_Profesional, Contraseña FROM Profesional WHERE Email = ?';
+        const [results] = await db.promise().query(query, [Email]);
+        if (results.length === 0) {
+            return res.status(401).json({ error: 'Credenciales inválidas.' });
         }
-        res.status(201).json({ message: 'Servicio asociado al profesional exitosamente.' });
-    });
+        const profesional = results[0];
+        // Comparar la contraseña proporcionada con la contraseña hasheada
+        const passwordMatch = await bcrypt.compare(Contraseña, profesional.Contraseña);
+        if (!passwordMatch) {
+            return res.status(401).json({ error: 'Credenciales inválidas.' });
+        }
+        // Generar un token JWT
+        const token = jwt.sign(
+            { profesionalId: profesional.ID_Profesional },
+            process.env.JWT_SECRET || 'your-secret-key',
+            { expiresIn: '1h' }
+        );
+        res.json({ message: 'Login exitoso.', token: token, profesionalId: profesional.ID_Profesional });
+    } catch (error) {
+        console.error('Error al iniciar sesión del profesional:', error);
+        return res.status(500).json({ error: 'Error interno del servidor al iniciar sesión del profesional.' });
+    }
 });
 
 // Eliminar perfil de profesional

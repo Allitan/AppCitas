@@ -73,6 +73,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const Email = document.getElementById('prof-reg-email').value;
             const Teléfono = document.getElementById('prof-reg-telefono').value;
             const Contraseña = document.getElementById('prof-reg-password').value;
+            const Especialidad = document.getElementById('prof-reg-especialidad') ? document.getElementById('prof-reg-especialidad').value : '';
+            const Duración = document.getElementById('prof-reg-duracion').value;
+            const Precio = document.getElementById('prof-reg-precio').value;
             const msg = document.getElementById('prof-reg-msg');
             msg.textContent = 'Enviando...';
             msg.className = '';
@@ -80,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const res = await fetch(`${API_BASE}/profesionales/registro`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ Nombre, Email, Teléfono, Contraseña })
+                    body: JSON.stringify({ Nombre, Email, Teléfono, Contraseña, Especialidad, Duración, Precio })
                 });
                 const data = await res.json();
                 msg.textContent = data.message || data.error;

@@ -18,7 +18,7 @@ router.get('/:citaId', (req, res) => {
             return res.status(404).json({ message: `No se encontró la cita con ID ${citaId}.` });
         }
 
-        res.json(results[0]);
+        res.json(results[0]); // Devolvemos el primer (y único) resultado
     });
 });
 
@@ -168,18 +168,29 @@ router.post('/', (req, res) => {
                     return res.status(400).json({ error: 'El servicio proporcionado no existe o no está ofrecido por el profesional.' });
                 }
 
+                // DEBUG extra: log día y consulta de disponibilidad
+                // console.log('Fecha recibida:', Fecha);
                 // Cálculo correcto del día de la semana en inglés, sin desfase de zona horaria
                 const [year, month, day] = Fecha.split('-').map(Number);
                 const fechaObj = new Date(Date.UTC(year, month - 1, day));
                 const dayNameEn = fechaObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-
+                // console.log('Día calculado (en inglés, UTC):', dayNameEn);
+                // const disponibilidadDebugQuery = `
+                //     SELECT * FROM Disponibilidad
+                //     WHERE ID_Profesional = ? AND Dia = ?
+                // `;
+                // db.query(disponibilidadDebugQuery, [ID_Profesional, dayNameEn], (err, rows) => {
+                //     if (!err) {
+                //         console.log('Disponibilidad encontrada en BD:', rows);
+                //     }
+                // });
                 const disponibilidadQuery = `
                     SELECT ID_Disponibilidad
                     FROM Disponibilidad
                     WHERE ID_Profesional = ? AND Dia = ?
                     AND TIME(?) >= TIME(HoraInicio) AND TIME(?) < TIME(HoraFin)
                 `;
-                
+                // console.log('Consulta disponibilidad params:', [ID_Profesional, dayNameEn, Hora, Hora]);
                 db.query(disponibilidadQuery, [ID_Profesional, dayNameEn, Hora, Hora], (err, disponibilidadResult) => {
                     if (err) {
                         console.error('Error al verificar la disponibilidad:', err);
@@ -190,6 +201,10 @@ router.post('/', (req, res) => {
                         return res.status(400).json({ error: 'El profesional no está disponible en la fecha y hora solicitadas.' });
                     }
 
+                    // Verificar si hay citas existentes para el mismo profesional que se superponen
+                    // Nueva lógica: solo hay solapamiento si (inicioA < finB) Y (finA > inicioB)
+                    // Donde A es la nueva cita, B es una cita existente
+                    // Calculamos finA sumando la duración del servicio a la hora solicitada
                     const overlapQuery = `
                         SELECT c.ID_Cita
                         FROM Cita c
